@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{eventName}} - 專屬入場 QR Code</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0 0 10px 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        
+        .header p {
+            margin: 0;
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px 30px;
+        }
+        
+        .greeting {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        
+        .info-card {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .info-card h3 {
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+            font-size: 18px;
+        }
+        
+        .info-card p {
+            margin: 5px 0;
+            color: #555;
+        }
+        
+        .qr-section {
+            text-align: center;
+            margin: 30px 0;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 2px dashed #dee2e6;
+        }
+        
+        .qr-section h3 {
+            margin-bottom: 20px;
+            color: #2c3e50;
+            font-size: 20px;
+        }
+        
+        .qr-code {
+            margin: 20px 0;
+            display: inline-block;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .qr-code img {
+            max-width: 200px;
+            height: auto;
+        }
+        
+        .checkin-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            margin: 20px 10px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .checkin-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .instructions {
+            background: #e8f4f8;
+            border: 1px solid #b8daff;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .instructions h4 {
+            color: #004085;
+            margin: 0 0 15px 0;
+            font-size: 16px;
+        }
+        
+        .instructions ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin: 8px 0;
+            color: #495057;
+        }
+        
+        .footer {
+            background: #2c3e50;
+            color: white;
+            padding: 30px;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .footer p {
+            margin: 5px 0;
+            opacity: 0.8;
+        }
+        
+        .footer .contact {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #34495e;
+        }
+        
+        .social-links {
+            margin: 20px 0;
+        }
+        
+        .social-links a {
+            display: inline-block;
+            margin: 0 10px;
+            color: #74b9ff;
+            text-decoration: none;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+            }
+            
+            .header, .content, .footer {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 24px;
+            }
+            
+            .qr-section {
+                padding: 20px;
+            }
+            
+            .checkin-button {
+                display: block;
+                margin: 10px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎫 {{eventName}}</h1>
+            <p>您的專屬入場 QR Code 已準備就緒</p>
+        </div>
+        
+        <div class="content">
+            <div class="greeting">
+                親愛的 {{name}}，您好！
+            </div>
+            
+            <p>感謝您報名參加 <strong>{{eventName}}</strong>！我們很高興您將與我們一起參與這次精彩的活動。</p>
+            
+            <div class="info-card">
+                <h3>📋 參與者資訊</h3>
+                <p><strong>姓名：</strong>{{name}}</p>
+                <p><strong>Email：</strong>{{email}}</p>
+                <p><strong>公司：</strong>{{company}}</p>
+                <p><strong>職稱：</strong>{{title}}</p>
+            </div>
+            
+            <div class="qr-section">
+                <h3>📱 您的專屬報到 QR Code</h3>
+                <p>請於活動當天使用以下 QR Code 進行報到：</p>
+                
+                <div class="qr-code">
+                    <img src="{{qrDataUri}}" alt="報到 QR Code" />
+                </div>
+                
+                <a href="{{checkinUrl}}" class="checkin-button">
+                    🎯 點此直接報到
+                </a>
+                
+                <p style="font-size: 14px; color: #6c757d; margin-top: 15px;">
+                    無法顯示 QR Code？請點擊上方按鈕直接報到
+                </p>
+            </div>
+            
+            <div class="instructions">
+                <h4>📝 報到說明</h4>
+                <ol>
+                    <li>活動當天請攜帶此郵件（或截圖儲存 QR Code）</li>
+                    <li>抵達會場後，向工作人員展示您的 QR Code</li>
+                    <li>工作人員掃描後，您的手機將顯示報到成功頁面</li>
+                    <li>如遇技術問題，請向服務台出示此郵件協助處理</li>
+                </ol>
+            </div>
+            
+            <div class="info-card">
+                <h3>📅 活動資訊</h3>
+                <p><strong>活動名稱：</strong>{{eventName}}</p>
+                <p><strong>日期時間：</strong>請參考活動通知或官網</p>
+                <p><strong>地點：</strong>請參考活動通知或官網</p>
+                <p><strong>注意事項：</strong></p>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>請提前 15-30 分鐘抵達會場</li>
+                    <li>QR Code 具有時效性，請勿分享給他人</li>
+                    <li>建議將此 QR Code 截圖儲存至手機相簿</li>
+                    <li>如有任何問題，請聯繫主辦單位</li>
+                </ul>
+            </div>
+            
+            <p style="margin-top: 30px;">
+                我們期待在活動中與您見面！如有任何疑問，請隨時與我們聯繫。
+            </p>
+            
+            <p style="color: #6c757d; font-size: 14px; margin-top: 20px;">
+                <em>此為系統自動發送郵件，請勿直接回覆。</em>
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p><strong>{{eventName}} 主辦單位</strong></p>
+            <p>感謝您的參與！</p>
+            
+            <div class="contact">
+                <p>如有問題請聯繫：</p>
+                <p>📧 Email: support@example.com</p>
+                <p>📞 電話: (02) 1234-5678</p>
+            </div>
+            
+            <div class="social-links">
+                <a href="#">Facebook</a>
+                <a href="#">LinkedIn</a>
+                <a href="#">官方網站</a>
+            </div>
+            
+            <p style="font-size: 12px; opacity: 0.6; margin-top: 20px;">
+                © 2025 {{eventName}}. All rights reserved.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

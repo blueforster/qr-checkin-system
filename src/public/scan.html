@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code 掃描器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #1a1a1a;
+            color: white;
+            overflow: hidden;
+        }
+
+        .container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 10;
+        }
+
+        .header h1 {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .header p {
+            font-size: 0.9em;
+            color: #ccc;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .scanner-frame {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 250px;
+            height: 250px;
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            background: rgba(0, 255, 0, 0.1);
+        }
+
+        .scanner-corner {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #00ff00;
+        }
+
+        .scanner-corner.top-left {
+            top: -3px;
+            left: -3px;
+            border-right: none;
+            border-bottom: none;
+        }
+
+        .scanner-corner.top-right {
+            top: -3px;
+            right: -3px;
+            border-left: none;
+            border-bottom: none;
+        }
+
+        .scanner-corner.bottom-left {
+            bottom: -3px;
+            left: -3px;
+            border-right: none;
+            border-top: none;
+        }
+
+        .scanner-corner.bottom-right {
+            bottom: -3px;
+            right: -3px;
+            border-left: none;
+            border-top: none;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            z-index: 10;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .status {
+            position: absolute;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            z-index: 10;
+        }
+
+        .status.success {
+            background: rgba(34, 197, 94, 0.8);
+        }
+
+        .status.error {
+            background: rgba(239, 68, 68, 0.8);
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.2em;
+            }
+            
+            .scanner-frame {
+                width: 200px;
+                height: 200px;
+            }
+            
+            .controls {
+                bottom: 20px;
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📱 QR Code 掃描器</h1>
+            <p>將 QR Code 對準中央框架進行掃描</p>
+        </div>
+
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>正在啟動相機...</p>
+        </div>
+
+        <video id="video" class="hidden" autoplay muted playsinline></video>
+
+        <div class="overlay">
+            <div class="scanner-frame">
+                <div class="scanner-corner top-left"></div>
+                <div class="scanner-corner top-right"></div>
+                <div class="scanner-corner bottom-left"></div>
+                <div class="scanner-corner bottom-right"></div>
+            </div>
+        </div>
+
+        <div id="status" class="status hidden">準備掃描...</div>
+
+        <div class="controls">
+            <button class="btn" onclick="switchCamera()" id="switchBtn">切換相機</button>
+            <button class="btn" onclick="toggleFlash()" id="flashBtn">開啟閃光燈</button>
+            <button class="btn" onclick="goToAdmin()">管理介面</button>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
+    <script>
+        let codeReader = null;
+        let currentDeviceId = null;
+        let devices = [];
+        let isScanning = false;
+
+        function showStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.classList.remove('hidden');
+            
+            setTimeout(() => {
+                status.classList.add('hidden');
+            }, 3000);
+        }
+
+        async function initScanner() {
+            try {
+                codeReader = new ZXing.BrowserQRCodeReader();
+                
+                devices = await codeReader.listVideoInputDevices();
+                console.log('可用設備:', devices);
+                
+                if (devices.length === 0) {
+                    throw new Error('未找到相機設備');
+                }
+
+                currentDeviceId = devices[0].deviceId;
+                
+                if (devices.length > 1) {
+                    const backCamera = devices.find(device => 
+                        device.label.toLowerCase().includes('back') || 
+                        device.label.toLowerCase().includes('rear') ||
+                        device.label.toLowerCase().includes('environment')
+                    );
+                    if (backCamera) {
+                        currentDeviceId = backCamera.deviceId;
+                    }
+                }
+
+                await startScanning();
+                
+            } catch (error) {
+                console.error('初始化掃描器失敗:', error);
+                showStatus('相機初始化失敗: ' + error.message, 'error');
+                document.getElementById('loading').innerHTML = 
+                    '<p>❌ 無法啟動相機</p><p>請確認瀏覽器權限並重新整理頁面</p>';
+            }
+        }
+
+        async function startScanning() {
+            if (isScanning) return;
+            
+            try {
+                isScanning = true;
+                
+                const video = document.getElementById('video');
+                const loading = document.getElementById('loading');
+                
+                await codeReader.decodeFromVideoDevice(currentDeviceId, video, (result, error) => {
+                    if (result) {
+                        console.log('掃描結果:', result.text);
+                        handleQRResult(result.text);
+                    }
+                    
+                    if (error && !(error instanceof ZXing.NotFoundException)) {
+                        console.error('掃描錯誤:', error);
+                    }
+                });
+
+                video.classList.remove('hidden');
+                loading.classList.add('hidden');
+                showStatus('掃描器已就緒', 'success');
+                
+            } catch (error) {
+                console.error('開始掃描失敗:', error);
+                showStatus('掃描啟動失敗: ' + error.message, 'error');
+                isScanning = false;
+            }
+        }
+
+        function handleQRResult(qrText) {
+            console.log('QR 內容:', qrText);
+            
+            if (qrText.includes('/checkin?token=')) {
+                showStatus('✅ 偵測到報到 QR Code，正在跳轉...', 'success');
+                
+                setTimeout(() => {
+                    window.location.href = qrText;
+                }, 1000);
+            } else if (qrText.startsWith('http')) {
+                showStatus('🔗 偵測到網址，正在開啟...', 'success');
+                
+                setTimeout(() => {
+                    window.open(qrText, '_blank');
+                }, 1000);
+            } else {
+                showStatus('📄 QR Code 內容: ' + qrText.substring(0, 50), 'info');
+            }
+        }
+
+        async function switchCamera() {
+            if (devices.length <= 1) {
+                showStatus('只有一個相機設備', 'error');
+                return;
+            }
+
+            try {
+                codeReader.reset();
+                isScanning = false;
+                
+                const currentIndex = devices.findIndex(device => device.deviceId === currentDeviceId);
+                const nextIndex = (currentIndex + 1) % devices.length;
+                currentDeviceId = devices[nextIndex].deviceId;
+                
+                showStatus('正在切換相機...', 'info');
+                await startScanning();
+                
+            } catch (error) {
+                console.error('切換相機失敗:', error);
+                showStatus('切換相機失敗', 'error');
+            }
+        }
+
+        async function toggleFlash() {
+            try {
+                const video = document.getElementById('video');
+                const stream = video.srcObject;
+                
+                if (stream) {
+                    const track = stream.getVideoTracks()[0];
+                    const capabilities = track.getCapabilities();
+                    
+                    if (capabilities.torch) {
+                        const settings = track.getSettings();
+                        const newTorchState = !settings.torch;
+                        
+                        await track.applyConstraints({
+                            advanced: [{ torch: newTorchState }]
+                        });
+                        
+                        const flashBtn = document.getElementById('flashBtn');
+                        flashBtn.textContent = newTorchState ? '關閉閃光燈' : '開啟閃光燈';
+                        showStatus(newTorchState ? '閃光燈已開啟' : '閃光燈已關閉', 'success');
+                    } else {
+                        showStatus('此設備不支援閃光燈', 'error');
+                    }
+                }
+            } catch (error) {
+                console.error('閃光燈控制失敗:', error);
+                showStatus('閃光燈控制失敗', 'error');
+            }
+        }
+
+        function goToAdmin() {
+            window.location.href = '/admin.html';
+        }
+
+        window.addEventListener('load', () => {
+            initScanner();
+        });
+
+        window.addEventListener('beforeunload', () => {
+            if (codeReader) {
+                codeReader.reset();
+            }
+        });
+    </script>
+</body>
+</html>
