@@ -16,8 +16,17 @@ export class SheetsService {
     this.tabName = process.env.GOOGLE_SHEETS_TAB || 'checkins';
 
     try {
-      const credentialsPath = join(__dirname, '../../creds/service-account.json');
-      const credentials = JSON.parse(readFileSync(credentialsPath, 'utf-8'));
+      let credentials;
+      
+      // 優先使用環境變數中的 base64 編碼金鑰 (適用於 Zeabur 等雲端部署)
+      if (process.env.GOOGLE_SERVICE_ACCOUNT_KEY) {
+        const credentialsJson = Buffer.from(process.env.GOOGLE_SERVICE_ACCOUNT_KEY, 'base64').toString('utf-8');
+        credentials = JSON.parse(credentialsJson);
+      } else {
+        // 使用檔案系統中的金鑰檔案 (適用於本地開發)
+        const credentialsPath = join(__dirname, '../../creds/service-account.json');
+        credentials = JSON.parse(readFileSync(credentialsPath, 'utf-8'));
+      }
       
       const auth = new google.auth.GoogleAuth({
         credentials,

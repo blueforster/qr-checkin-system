@@ -1,0 +1,14 @@
+{
+  "name": "qr-checkin-system",
+  "services": [
+    {
+      "name": "qr-checkin",
+      "source": {
+        "type": "git"
+      },
+      "environment": {
+        "NODE_ENV": "production"
+      }
+    }
+  ]
+}
