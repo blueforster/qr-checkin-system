@@ -56,11 +56,21 @@ export class Mailer {
   private renderTemplate(participant: ParticipantRecord, options: EmailOptions, qrData: any): string {
     let html = this.emailTemplate;
     
+    // 智能生成參與者詳細資訊
+    let participantDetails = '';
+    if (participant.company) {
+      participantDetails += `<p><strong>公司：</strong>${participant.company}</p>`;
+    }
+    if (participant.title) {
+      participantDetails += `<p><strong>職稱：</strong>${participant.title}</p>`;
+    }
+    
     const replacements = {
       '{{name}}': participant.name || '',
       '{{email}}': participant.email || '',
       '{{company}}': participant.company || '',
       '{{title}}': participant.title || '',
+      '{{participantDetails}}': participantDetails,
       '{{eventName}}': options.eventName || '',
       '{{checkinUrl}}': qrData.checkinUrl || '',
       '{{qrDataUri}}': qrData.qrDataUri || '',

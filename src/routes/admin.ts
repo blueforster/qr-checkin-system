@@ -1,5 +1,7 @@
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { join } from 'path';
 import { Mailer } from '../services/mailer';
 import { SheetsService } from '../services/sheets';
 import { LocalStorage } from '../services/storage';
@@ -12,6 +14,15 @@ const router = Router();
 const upload = multer({ 
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }
+});
+
+// 支援多檔案上傳的配置
+const multiFileUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { 
+    fileSize: 10 * 1024 * 1024,  // 10MB per file
+    files: 10  // 最多 10 個檔案
+  }
 });
 
 let currentParticipants: ParticipantRecord[] = [];
@@ -233,5 +244,182 @@ router.post('/verify-smtp', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to verify SMTP configuration' });
   }
 });
+
+// 取得預設郵件範本
+router.get('/get-default-template', (req: Request, res: Response) => {
+  try {
+    const templatePath = join(__dirname, '../../templates/email.html');
+    const template = readFileSync(templatePath, 'utf-8');
+    res.send(template);
+  } catch (error) {
+    logger.error('Failed to load default template:', error);
+    res.status(500).json({ error: 'Failed to load default template' });
+  }
+});
+
+// 支援自定義範本和多附件的批次寄送
+router.post('/send-batch-enhanced', multiFileUpload.any(), async (req: Request, res: Response) => {
+  try {
+    if (currentParticipants.length === 0) {
+      return res.status(400).json({ error: 'No participants loaded. Please upload CSV first.' });
+    }
+
+    const { eventName, subject, from, testMode, attachPng, customTemplate } = req.body;
+
+    if (!eventName || !subject) {
+      return res.status(400).json({ error: 'Missing required fields: eventName, subject' });
+    }
+
+    // 處理附件檔案
+    const attachmentFiles = req.files as Express.Multer.File[] || [];
+    const attachments = attachmentFiles.map(file => ({
+      filename: file.originalname,
+      content: file.buffer,
+      contentType: file.mimetype
+    }));
+
+    const options: EmailOptions & { customTemplate?: string; attachments?: any[] } = {
+      eventName,
+      subject,
+      from: from || `${process.env.FROM_DISPLAY} <${process.env.FROM_EMAIL}>`,
+      testMode: testMode === 'true',
+      attachPng: attachPng === 'true',
+      customTemplate: customTemplate || undefined,
+      attachments: attachments.length > 0 ? attachments : undefined
+    };
+
+    // 建立增強版的 Mailer 實例
+    const enhancedMailer = new EnhancedMailer();
+    const results = await enhancedMailer.sendBatch(currentParticipants, options);
+    
+    const successCount = results.filter(r => r.success).length;
+    const totalCount = results.length;
+
+    logger.info(`Batch email completed: ${successCount}/${totalCount} sent successfully`);
+    
+    res.json({ 
+      success: true, 
+      successCount, 
+      totalCount, 
+      results: results.slice(0, 5) // 只返回前5個結果避免響應過大
+    });
+
+  } catch (error) {
+    logger.error('Enhanced batch email error:', error);
+    res.status(500).json({ error: 'Failed to send enhanced batch emails' });
+  }
+});
+
+// 增強版 Mailer 類別
+class EnhancedMailer extends Mailer {
+  async sendBatch(participants: ParticipantRecord[], options: EmailOptions & { customTemplate?: string; attachments?: any[] }): Promise<any[]> {
+    const results: any[] = [];
+    const eventId = process.env.EVENT_ID || '';
+    
+    const participantsToSend = options.testMode ? participants.slice(0, 3) : participants;
+    
+    for (let i = 0; i < participantsToSend.length; i++) {
+      const participant = participantsToSend[i];
+      
+      try {
+        const qrData = await this.generateQRData(eventId, participant.email);
+        
+        // 使用自定義範本或預設範本
+        let html;
+        if (options.customTemplate) {
+          html = this.renderCustomTemplate(participant, options, qrData, options.customTemplate);
+        } else {
+          html = this.renderTemplate(participant, options, qrData);
+        }
+        
+        const mailOptions: any = {
+          from: `${process.env.FROM_DISPLAY} <${process.env.FROM_EMAIL}>`,
+          to: participant.email,
+          subject: options.subject.replace('{{eventName}}', options.eventName),
+          html: html,
+          attachments: []
+        };
+
+        // 添加 QR Code 附件
+        if (options.attachPng) {
+          mailOptions.attachments.push({
+            filename: 'qr-code.png',
+            content: qrData.qrBuffer,
+            contentType: 'image/png'
+          });
+        }
+
+        // 添加自定義附件
+        if (options.attachments) {
+          mailOptions.attachments.push(...options.attachments);
+        }
+
+        await this.transporter.sendMail(mailOptions);
+        
+        results.push({
+          email: participant.email,
+          success: true
+        });
+
+        // 發送速率限制
+        await this.delay(1000 / (parseInt(process.env.RATE_LIMIT_PER_SEC || '3')));
+
+      } catch (error) {
+        logger.error(`Failed to send email to ${participant.email}:`, error);
+        results.push({
+          email: participant.email,
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    }
+    
+    return results;
+  }
+
+  private renderCustomTemplate(participant: any, options: any, qrData: any, template: string): string {
+    let html = template;
+    
+    const participantDetails = this.generateParticipantDetails(participant);
+    
+    const replacements = {
+      '{{name}}': participant.name || '',
+      '{{email}}': participant.email || '',
+      '{{company}}': participant.company || '',
+      '{{title}}': participant.title || '',
+      '{{participantDetails}}': participantDetails,
+      '{{eventName}}': options.eventName || '',
+      '{{checkinUrl}}': qrData.checkinUrl || '',
+      '{{qrDataUri}}': qrData.qrDataUri || '',
+    };
+
+    for (const [placeholder, value] of Object.entries(replacements)) {
+      html = html.replace(new RegExp(placeholder, 'g'), value);
+    }
+
+    return html;
+  }
+
+  private generateParticipantDetails(participant: any): string {
+    let details = '';
+    if (participant.company) {
+      details += `<p><strong>公司：</strong>${participant.company}</p>`;
+    }
+    if (participant.title) {
+      details += `<p><strong>職稱：</strong>${participant.title}</p>`;
+    }
+    return details;
+  }
+
+  private async generateQRData(eventId: string, email: string) {
+    // 這裡需要從原本的 Mailer 複製 QR 產生邏輯
+    const { generateQRCode } = require('../services/qr');
+    return await generateQRCode(eventId, email);
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+}
 
 export default router;

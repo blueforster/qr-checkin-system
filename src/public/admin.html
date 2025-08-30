@@ -246,6 +246,52 @@
             width: auto;
         }
 
+        .attachment-list {
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .attachment-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            margin-bottom: 8px;
+        }
+
+        .attachment-item .filename {
+            font-weight: 500;
+            color: #2c3e50;
+        }
+
+        .attachment-item .filesize {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .attachment-item .remove-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .attachment-item .remove-btn:hover {
+            background: #c0392b;
+        }
+
+        #emailTemplate {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 10px;
@@ -321,6 +367,28 @@
                         <tbody id="previewBody"></tbody>
                     </table>
                 </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📝 郵件範本編輯</h2>
+            <div class="form-group">
+                <label for="emailTemplate">郵件範本 (HTML):</label>
+                <textarea id="emailTemplate" rows="15" placeholder="輸入 HTML 郵件範本..."></textarea>
+                <small>可用變數: {{name}}, {{email}}, {{company}}, {{title}}, {{eventName}}, {{checkinUrl}}, {{qrDataUri}}</small>
+            </div>
+            <div class="form-group">
+                <button class="btn" onclick="loadDefaultTemplate()">📋 載入預設範本</button>
+                <button class="btn" onclick="previewTemplate()">👁️ 預覽範本</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📎 附件管理</h2>
+            <div class="form-group">
+                <label for="attachmentFiles">上傳附件 (支援 PDF, DOC, DOCX, PNG, JPG 等):</label>
+                <input type="file" id="attachmentFiles" multiple accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.txt">
+                <div id="attachmentList" class="attachment-list"></div>
             </div>
         </div>
 

@@ -259,6 +259,20 @@ GET /checkin?token={JWT_TOKEN}
 
 ## 🛠️ 部署指南
 
+### Zeabur 部署
+
+1. 前往 [Zeabur](https://zeabur.com/) 註冊帳號
+2. 建立新專案並連接 GitHub 存放庫
+3. 系統會自動偵測 `zeabur.json` 配置檔案
+4. 設定環境變數：
+   - 將 `.env` 檔案內容複製到環境變數設定
+   - **重要**：將 Google 服務帳號 JSON 內容轉為 base64 格式設定到 `GOOGLE_SERVICE_ACCOUNT_KEY`
+   ```bash
+   # 在本地執行此命令取得 base64 編碼
+   cat creds/service-account.json | base64 -w 0
+   ```
+5. 部署完成
+
 ### Railway 部署
 
 1. 前往 [Railway](https://railway.app/) 註冊帳號
@@ -291,6 +305,253 @@ docker run -p 8080:8080 --env-file .env qr-checkin
 ```bash
 docker-compose up -d
 ```
+
+### 💻 本機執行
+
+系統完全支援在本機執行，適合小型活動、測試環境或高度機密性場合。
+
+#### 本機執行優勢
+- ✅ **完全離線操作** - 不需要雲端服務
+- ✅ **成本零消耗** - 無雲端費用
+- ✅ **資料完全掌控** - 敏感資料不上雲
+- ✅ **快速測試** - 即時調試和修改
+
+#### 本機設定步驟
+
+**1. 環境準備**
+```bash
+# 確認 Node.js 已安裝 (需要 16+ 版本)
+node --version
+
+# 安裝依賴
+npm install
+
+# 複製環境設定
+cp .env.sample .env
+```
+
+**2. 本機專用 .env 設定**
+```env
+# 本機設定
+PORT=8080
+BASE_URL=http://localhost:8080
+EVENT_ID=local-event-2025
+EVENT_NAME=本機測試活動
+JWT_SECRET=your-secret-key-here
+JWT_TTL_HOURS=240
+
+# 郵件設定（使用您的真實郵箱）
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_app_password
+
+# 本機儲存設定
+LOCAL_PERSISTENCE=sqlite    # 使用本機 SQLite 資料庫
+GOOGLE_SHEETS_ID=           # 可留空，僅使用本機儲存
+
+# 管理設定
+ADMIN_PASS=admin123
+RATE_LIMIT_PER_SEC=5
+ATTACH_QR_PNG=false
+```
+
+**3. 啟動系統**
+```bash
+# 開發模式（推薦）
+npm run dev
+
+# 或生產模式
+npm run build
+npm start
+```
+
+系統將在 `http://localhost:8080` 啟動
+
+#### 本機儲存選項
+
+**選項 1：僅本機儲存（推薦）**
+```env
+LOCAL_PERSISTENCE=sqlite
+GOOGLE_SHEETS_ID=    # 留空
+```
+- 資料儲存在 `data/checkins.sqlite`
+- 完全離線操作，可匯出 CSV
+
+**選項 2：雙重備份**
+```env
+LOCAL_PERSISTENCE=sqlite
+GOOGLE_SHEETS_ID=your_sheet_id
+```
+- 主要：本機 SQLite，備份：Google Sheets
+- 網路問題時自動切換本機儲存
+
+#### 區域網路存取
+
+讓同事在區域網路內也能使用：
+
+**1. 取得本機 IP 位址**
+```bash
+# Windows
+ipconfig
+
+# Mac/Linux  
+ifconfig
+```
+
+**2. 修改設定**
+```env
+BASE_URL=http://192.168.1.100:8080    # 替換為您的本機 IP
+```
+
+**3. 防火牆設定**
+- Windows：允許 Node.js 通過防火牆
+- Mac：系統偏好設定 > 安全性 > 防火牆
+- Linux：`sudo ufw allow 8080`
+
+#### 本機使用流程
+
+**管理者操作：**
+1. 開啟 `http://localhost:8080`
+2. 上傳參與者 CSV 並發送邀請
+3. 即時查看統計和匯出記錄
+
+**報到流程：**
+1. 參與者收到邀請信（含 QR Code）
+2. 工作人員掃描 QR Code
+3. 自動導向：`http://localhost:8080/checkin?token=...`
+4. 顯示報到成功頁面
+
+#### 資料管理
+
+**資料位置：**
+- SQLite 資料庫：`data/checkins.sqlite`
+- 系統日誌：控制台輸出
+
+**備份方式：**
+```bash
+# 備份資料庫檔案
+cp data/checkins.sqlite backup/
+
+# 或透過管理介面匯出 CSV
+```
+
+#### 本機 vs 雲端比較
+
+| 功能 | 本機執行 | 雲端部署 |
+|------|----------|----------|
+| 成本 | 免費 | 需付費 |
+| 設定複雜度 | 簡單 | 中等 |
+| 網路存取 | 區域網路 | 全球存取 |
+| 資料安全 | 完全掌控 | 依賴平台 |
+| 擴展性 | 有限 | 無限 |
+| 維護 | 自行負責 | 平台管理 |
+
+**本機執行適合：**
+- 🏢 企業內部活動
+- 🎓 學校小型聚會
+- 🧪 系統測試和開發
+- 🔒 高度機密性活動
+
+## 📧 其他郵件服務設定
+
+系統支援多種郵件服務，只需修改 `.env` 檔案中的 SMTP 設定：
+
+### Microsoft Outlook/Hotmail
+
+```env
+SMTP_HOST=smtp-mail.outlook.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your_account@outlook.com
+SMTP_PASS=your_app_password
+FROM_EMAIL=your_account@outlook.com
+```
+
+**取得 Outlook 應用程式密碼：**
+1. 前往 [Microsoft 帳戶安全性](https://account.microsoft.com/security)
+2. 啟用兩步驟驗證
+3. 建立應用程式密碼（16 位數密碼，移除空格）
+4. 將密碼設定到 `SMTP_PASS`
+
+### Yahoo Mail
+
+```env
+SMTP_HOST=smtp.mail.yahoo.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your_account@yahoo.com
+SMTP_PASS=your_app_password
+FROM_EMAIL=your_account@yahoo.com
+```
+
+### 企業郵件服務
+
+```env
+SMTP_HOST=mail.yourcompany.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=noreply@yourcompany.com
+SMTP_PASS=your_password
+FROM_EMAIL=noreply@yourcompany.com
+```
+
+### 其他常見服務
+
+**QQ 郵箱：** `SMTP_HOST=smtp.qq.com`  
+**163 網易：** `SMTP_HOST=smtp.163.com`  
+**126 網易：** `SMTP_HOST=smtp.126.com`
+
+### SMTP 設定說明
+
+**埠號選擇：**
+- **587** - TLS 加密（推薦，設定 `SMTP_SECURE=false`）
+- **465** - SSL 加密（設定 `SMTP_SECURE=true`）
+- **25** - 無加密（不建議使用）
+
+**安全要求：**
+大部分現代郵件服務都需要：
+1. 啟用兩步驟驗證
+2. 使用應用程式專用密碼（而非一般登入密碼）
+3. 開啟「允許較不安全的應用程式」（某些服務需要）
+
+## 📝 自定義郵件範本和附件
+
+系統支援完全自定義的郵件範本和多附件功能：
+
+### 範本編輯功能
+- 📝 HTML 範本編輯器
+- 🔄 載入預設範本
+- 👁️ 即時預覽功能
+- 🏷️ 支援範本變數：`{{name}}`, `{{email}}`, `{{company}}`, `{{title}}`, `{{eventName}}`, `{{checkinUrl}}`, `{{qrDataUri}}`
+
+### 多附件支援
+- 📎 支援多檔案上傳（PDF, DOC, DOCX, PNG, JPG 等）
+- 📋 附件清單管理
+- 🗑️ 個別移除附件
+- 📏 檔案大小顯示
+
+### 使用範例
+
+**自定義範本：**
+```html
+<h1>{{eventName}} 邀請函</h1>
+<p>親愛的 {{name}} 您好：</p>
+<p>請參閱附件中的會議議程，並使用以下 QR Code 報到：</p>
+<img src="{{qrDataUri}}" alt="QR Code">
+```
+
+**常用附件：**
+- Meeting_Agenda.pdf（會議議程）
+- Event_Guidelines.docx（活動指南）
+- Venue_Map.png（會場地圖）
+- Parking_Info.pdf（停車資訊）
+
+### 使用方式
+1. 在管理介面「📝 郵件範本編輯」區塊編輯 HTML 範本
+2. 在「📎 附件管理」區塊上傳所需附件
+3. 正常進行批次寄送，系統會自動使用自定義範本和附件
 
 ## 🔍 故障排除
 

@@ -311,6 +311,149 @@ async function exportCheckins() {
     }
 }
 
+// 郵件範本管理
+let attachmentFiles = [];
+
+async function loadDefaultTemplate() {
+    try {
+        const response = await fetch('/admin/get-default-template', {
+            headers: { 'Authorization': `Bearer ${adminPass}` }
+        });
+        
+        if (response.ok) {
+            const template = await response.text();
+            document.getElementById('emailTemplate').value = template;
+            showAlert('預設範本已載入', 'success');
+        } else {
+            showAlert('載入預設範本失敗', 'error');
+        }
+    } catch (error) {
+        showAlert(`載入範本錯誤: ${error.message}`, 'error');
+    }
+}
+
+function previewTemplate() {
+    const template = document.getElementById('emailTemplate').value;
+    const eventName = document.getElementById('eventName').value || '範例活動';
+    
+    // 簡單的範本預覽，替換基本變數
+    let preview = template
+        .replace(/\{\{eventName\}\}/g, eventName)
+        .replace(/\{\{name\}\}/g, '王小明')
+        .replace(/\{\{email\}\}/g, 'example@email.com')
+        .replace(/\{\{company\}\}/g, '範例公司')
+        .replace(/\{\{title\}\}/g, '工程師')
+        .replace(/\{\{checkinUrl\}\}/g, '#')
+        .replace(/\{\{qrDataUri\}\}/g, 'data:image/png;base64,iVBOR...');
+    
+    const previewWindow = window.open('', '_blank');
+    previewWindow.document.write(preview);
+    previewWindow.document.close();
+}
+
+// 附件管理
+function setupAttachmentHandling() {
+    const fileInput = document.getElementById('attachmentFiles');
+    
+    fileInput.addEventListener('change', function(event) {
+        const files = Array.from(event.target.files);
+        
+        files.forEach(file => {
+            if (!attachmentFiles.some(f => f.name === file.name && f.size === file.size)) {
+                attachmentFiles.push(file);
+            }
+        });
+        
+        updateAttachmentList();
+        event.target.value = ''; // 清空輸入框
+    });
+}
+
+function updateAttachmentList() {
+    const listContainer = document.getElementById('attachmentList');
+    
+    if (attachmentFiles.length === 0) {
+        listContainer.innerHTML = '<p style="color: #666; text-align: center;">尚未選擇附件</p>';
+        return;
+    }
+    
+    const listHTML = attachmentFiles.map((file, index) => `
+        <div class="attachment-item">
+            <div>
+                <div class="filename">📎 ${file.name}</div>
+                <div class="filesize">${formatFileSize(file.size)}</div>
+            </div>
+            <button class="remove-btn" onclick="removeAttachment(${index})">移除</button>
+        </div>
+    `).join('');
+    
+    listContainer.innerHTML = listHTML;
+}
+
+function removeAttachment(index) {
+    attachmentFiles.splice(index, 1);
+    updateAttachmentList();
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// 修改發送郵件函數支援自定義範本和附件
+async function sendBatchEmails() {
+    const eventName = document.getElementById('eventName').value;
+    const subject = document.getElementById('emailSubject').value;
+    const from = document.getElementById('fromEmail').value;
+    const testMode = document.getElementById('testMode').checked;
+    const attachPng = document.getElementById('attachPng').checked;
+    const customTemplate = document.getElementById('emailTemplate').value;
+
+    if (!eventName || !subject) {
+        showAlert('請填寫活動名稱和信件主旨', 'error');
+        return;
+    }
+
+    try {
+        const formData = new FormData();
+        formData.append('eventName', eventName);
+        formData.append('subject', subject);
+        formData.append('from', from);
+        formData.append('testMode', testMode);
+        formData.append('attachPng', attachPng);
+        
+        if (customTemplate.trim()) {
+            formData.append('customTemplate', customTemplate);
+        }
+        
+        // 添加附件檔案
+        attachmentFiles.forEach((file, index) => {
+            formData.append(`attachment_${index}`, file);
+        });
+
+        const response = await fetch('/admin/send-batch-enhanced', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${adminPass}`
+            },
+            body: formData
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            showAlert(`批次寄送成功: ${result.successCount}/${result.totalCount} 封郵件已寄出`, 'success');
+        } else {
+            showAlert(`批次寄送失敗: ${result.error}`, 'error');
+        }
+    } catch (error) {
+        showAlert(`批次寄送錯誤: ${error.message}`, 'error');
+    }
+}
+
 window.addEventListener('load', () => {
     document.getElementById('eventName').value = 'AI Orators Monthly Meeting';
     document.getElementById('emailSubject').value = '[{{eventName}}] 你的專屬入場QR碼';
@@ -318,6 +461,10 @@ window.addEventListener('load', () => {
     
     document.getElementById('resendEventName').value = 'AI Orators Monthly Meeting';
     document.getElementById('resendSubject').value = '[活動名稱] 你的專屬入場QR碼';
+    
+    // 初始化附件處理
+    setupAttachmentHandling();
+    updateAttachmentList();
     
     loadStats();
 });
