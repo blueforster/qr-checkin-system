@@ -350,13 +350,39 @@
         </div>
 
         <div class="card">
+            <h2>⚙️ 活動基本資料</h2>
+            <div class="form-group">
+                <label for="eventName">活動名稱:</label>
+                <input type="text" id="eventName" placeholder="AI Orators Monthly Meeting">
+                <small>範本變數：{{eventName}}</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="eventDate">活動日期時間:</label>
+                <input type="text" id="eventDate" placeholder="2025年9月7日（週日）13:00–20:00">
+                <small>範本變數：{{eventDate}}</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="eventLocation">活動地點:</label>
+                <input type="text" id="eventLocation" placeholder="台北市信義區忠孝東路五段68號19樓（市政府站3號出口）">
+                <small>範本變數：{{eventLocation}}</small>
+            </div>
+        </div>
+
+        <div class="card">
             <h2>📋 上傳參與者名單</h2>
             <div class="file-drop" onclick="document.getElementById('csvFile').click()" 
                  ondrop="handleFileDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
-                <p>📁 點擊選擇檔案或拖放 CSV 檔案到此處</p>
+                <p id="csvFileText">📁 點擊選擇檔案或拖放 CSV 檔案到此處</p>
                 <small>支援格式：CSV (UTF-8)，必須包含 name, email 欄位</small>
             </div>
             <input type="file" id="csvFile" accept=".csv" style="display: none;" onchange="uploadCSV(event)">
+            
+            <div id="csvFileStatus" style="display: none; margin-top: 10px; padding: 10px; background: #e8f5e8; border-radius: 5px; font-size: 14px;">
+                <strong>✅ 已選擇檔案：</strong><span id="csvFileName"></span>
+                <br><small>點擊上方區域可重新選擇檔案</small>
+            </div>
             
             <div id="csvPreview" class="hidden">
                 <h3>名單預覽</h3>
@@ -375,11 +401,24 @@
             <div class="form-group">
                 <label for="emailTemplate">郵件範本 (HTML):</label>
                 <textarea id="emailTemplate" rows="15" placeholder="輸入 HTML 郵件範本..."></textarea>
-                <small>可用變數: {{name}}, {{email}}, {{company}}, {{title}}, {{eventName}}, {{checkinUrl}}, {{qrDataUri}}</small>
+                <small>可用變數: {{name}}, {{email}}, {{company}}, {{title}}, {{eventName}}, {{eventDate}}, {{eventLocation}}, {{checkinUrl}}, {{qrDataUri}}, {{participantDetails}}</small>
+            </div>
+            <div class="form-group">
+                <label for="templateFile">上傳範本檔案:</label>
+                <input type="file" id="templateFile" accept=".html,.htm" onchange="uploadTemplate()">
+                <small>支援 HTML 格式的範本檔案</small>
+            </div>
+            <div class="form-group">
+                <label for="participantSelector">預覽參與者 (需先上傳名單):</label>
+                <select id="participantSelector" onchange="updatePreviewData()">
+                    <option value="">選擇參與者進行預覽</option>
+                </select>
+                <small>選擇參與者後預覽功能會使用該參與者的真實資料</small>
             </div>
             <div class="form-group">
                 <button class="btn" onclick="loadDefaultTemplate()">📋 載入預設範本</button>
                 <button class="btn" onclick="previewTemplate()">👁️ 預覽範本</button>
+                <button class="btn" onclick="previewAllParticipants()" id="previewAllBtn" style="display:none;">📋 批次預覽所有參與者</button>
             </div>
         </div>
 
@@ -394,10 +433,6 @@
 
         <div class="card">
             <h2>📧 批次寄送邀請信</h2>
-            <div class="form-group">
-                <label for="eventName">活動名稱:</label>
-                <input type="text" id="eventName" placeholder="AI Orators Monthly Meeting">
-            </div>
             <div class="form-group">
                 <label for="emailSubject">信件主旨:</label>
                 <input type="text" id="emailSubject" placeholder="[{{eventName}}] 你的專屬入場QR碼">

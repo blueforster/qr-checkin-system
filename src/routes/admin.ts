@@ -264,7 +264,7 @@ router.post('/send-batch-enhanced', multiFileUpload.any(), async (req: Request, 
       return res.status(400).json({ error: 'No participants loaded. Please upload CSV first.' });
     }
 
-    const { eventName, subject, from, testMode, attachPng, customTemplate } = req.body;
+    const { eventName, eventDate, eventLocation, subject, from, testMode, attachPng, customTemplate } = req.body;
 
     if (!eventName || !subject) {
       return res.status(400).json({ error: 'Missing required fields: eventName, subject' });
@@ -278,8 +278,10 @@ router.post('/send-batch-enhanced', multiFileUpload.any(), async (req: Request, 
       contentType: file.mimetype
     }));
 
-    const options: EmailOptions & { customTemplate?: string; attachments?: any[] } = {
+    const options: EmailOptions & { customTemplate?: string; attachments?: any[]; eventDate?: string; eventLocation?: string } = {
       eventName,
+      eventDate,
+      eventLocation,
       subject,
       from: from || `${process.env.FROM_DISPLAY} <${process.env.FROM_EMAIL}>`,
       testMode: testMode === 'true',
@@ -389,6 +391,8 @@ class EnhancedMailer extends Mailer {
       '{{title}}': participant.title || '',
       '{{participantDetails}}': participantDetails,
       '{{eventName}}': options.eventName || '',
+      '{{eventDate}}': options.eventDate || '請參考活動通知或官網',
+      '{{eventLocation}}': options.eventLocation || '請參考活動通知或官網',
       '{{checkinUrl}}': qrData.checkinUrl || '',
       '{{qrDataUri}}': qrData.qrDataUri || '',
     };

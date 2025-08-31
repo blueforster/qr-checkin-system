@@ -19,7 +19,7 @@ interface MailerConfig {
 }
 
 export class Mailer {
-  private transporter: nodemailer.Transporter;
+  public transporter: nodemailer.Transporter;
   private config: MailerConfig;
   private emailTemplate: string;
 
@@ -53,7 +53,7 @@ export class Mailer {
     }
   }
 
-  private renderTemplate(participant: ParticipantRecord, options: EmailOptions, qrData: any): string {
+  public renderTemplate(participant: ParticipantRecord, options: EmailOptions, qrData: any): string {
     let html = this.emailTemplate;
     
     // 智能生成參與者詳細資訊
@@ -72,6 +72,8 @@ export class Mailer {
       '{{title}}': participant.title || '',
       '{{participantDetails}}': participantDetails,
       '{{eventName}}': options.eventName || '',
+      '{{eventDate}}': (options as any).eventDate || '請參考活動通知或官網',
+      '{{eventLocation}}': (options as any).eventLocation || '請參考活動通知或官網',
       '{{checkinUrl}}': qrData.checkinUrl || '',
       '{{qrDataUri}}': qrData.qrDataUri || '',
     };
