@@ -92,21 +92,22 @@ router.post('/send-batch', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'No participants loaded. Please upload CSV first.' });
     }
 
-    const { eventName, subject, from, testMode = false, attachPng = false } = req.body;
+    const { eventId, eventName, subject, from, testMode = false, attachPng = false } = req.body;
 
-    if (!eventName || !subject) {
-      return res.status(400).json({ error: 'Missing required fields: eventName, subject' });
+    if (!eventId || !eventName || !subject) {
+      return res.status(400).json({ error: 'Missing required fields: eventId, eventName, subject' });
     }
 
-    const options: EmailOptions = {
+    const options: EmailOptions & { eventId: string } = {
+      eventId,
       eventName,
       subject,
-      from: from || `${process.env.FROM_DISPLAY} <${process.env.FROM_EMAIL}>`,
+      from: from || 'Event System <noreply@example.com>',
       testMode: Boolean(testMode),
       attachPng: Boolean(attachPng)
     };
 
-    logger.info(`Starting batch email send. Test mode: ${testMode}, Total: ${currentParticipants.length}`);
+    logger.info(`Starting batch email send. Event ID: ${eventId}, Test mode: ${testMode}, Total: ${currentParticipants.length}`);
 
     const results = await mailer.sendBatch(currentParticipants, options);
 
@@ -137,10 +138,10 @@ router.post('/send-batch', async (req: Request, res: Response) => {
 
 router.post('/resend-one', async (req: Request, res: Response) => {
   try {
-    const { email, eventName, subject, attachPng = false } = req.body;
+    const { eventId, email, eventName, subject, attachPng = false } = req.body;
 
-    if (!email || !eventName || !subject) {
-      return res.status(400).json({ error: 'Missing required fields: email, eventName, subject' });
+    if (!eventId || !email || !eventName || !subject) {
+      return res.status(400).json({ error: 'Missing required fields: eventId, email, eventName, subject' });
     }
 
     const participant = currentParticipants.find(p => p.email === email);
@@ -148,10 +149,11 @@ router.post('/resend-one', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Participant not found' });
     }
 
-    const options: EmailOptions = {
+    const options: EmailOptions & { eventId: string } = {
+      eventId,
       eventName,
       subject,
-      from: `${process.env.FROM_DISPLAY} <${process.env.FROM_EMAIL}>`,
+      from: 'Event System <noreply@example.com>',
       attachPng: Boolean(attachPng)
     };
 
@@ -200,7 +202,7 @@ router.get('/export-checkins', async (req: Request, res: Response) => {
 
 router.get('/stats', async (req: Request, res: Response) => {
   try {
-    const eventId = process.env.EVENT_ID;
+    const eventId = req.query.eventId as string || process.env.EVENT_ID;
     
     let totalCheckins = 0;
     let todayCheckins = 0;
@@ -208,7 +210,8 @@ router.get('/stats', async (req: Request, res: Response) => {
     try {
       const allCheckins = await sheetsService.getCheckins(eventId);
       totalCheckins = allCheckins.length;
-      todayCheckins = await sheetsService.getTodayCheckins();
+      const today = new Date().toISOString().split('T')[0];
+      todayCheckins = allCheckins.filter(r => r.timestamp.startsWith(today)).length;
     } catch (error) {
       logger.warn('Failed to get stats from Sheets, trying local storage:', error);
       const localCheckins = await localStorage.getCheckins(eventId);
@@ -283,7 +286,7 @@ router.post('/send-batch-enhanced', multiFileUpload.any(), async (req: Request, 
       eventDate,
       eventLocation,
       subject,
-      from: from || `${process.env.FROM_DISPLAY} <${process.env.FROM_EMAIL}>`,
+      from: from || 'Event System <noreply@example.com>',
       testMode: testMode === 'true',
       attachPng: attachPng === 'true',
       customTemplate: customTemplate || undefined,
@@ -314,9 +317,13 @@ router.post('/send-batch-enhanced', multiFileUpload.any(), async (req: Request, 
 
 // 增強版 Mailer 類別
 class EnhancedMailer extends Mailer {
-  async sendBatch(participants: ParticipantRecord[], options: EmailOptions & { customTemplate?: string; attachments?: any[] }): Promise<any[]> {
+  async sendBatch(participants: ParticipantRecord[], options: EmailOptions & { customTemplate?: string; attachments?: any[]; eventId?: string }): Promise<any[]> {
     const results: any[] = [];
-    const eventId = process.env.EVENT_ID || '';
+    const eventId = options.eventId || '';
+    
+    if (!eventId) {
+      throw new Error('Event ID is required for batch email sending');
+    }
     
     const participantsToSend = options.testMode ? participants.slice(0, 3) : participants;
     
@@ -335,7 +342,7 @@ class EnhancedMailer extends Mailer {
         }
         
         const mailOptions: any = {
-          from: `${process.env.FROM_DISPLAY} <${process.env.FROM_EMAIL}>`,
+          from: 'Event System <noreply@example.com>',
           to: participant.email,
           subject: options.subject.replace('{{eventName}}', options.eventName),
           html: html,
@@ -425,5 +432,64 @@ class EnhancedMailer extends Mailer {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 }
+
+// 新增：單個QR code預覽API
+router.post('/preview-qr', async (req: Request, res: Response) => {
+  try {
+    const { eventId, email } = req.body;
+    
+    if (!eventId || !email) {
+      return res.status(400).json({ error: '缺少必要參數: eventId, email' });
+    }
+
+    const { generateQRCode } = require('../services/qr');
+    const qrData = await generateQRCode(eventId, email);
+    
+    res.json({
+      success: true,
+      qrDataUri: qrData.qrDataUri,
+      checkinUrl: qrData.checkinUrl
+    });
+  } catch (error) {
+    logger.error('QR預覽錯誤:', error);
+    res.status(500).json({ error: 'QR code預覽失敗' });
+  }
+});
+
+// 新增：批次QR code預覽API
+router.post('/batch-preview-qr', async (req: Request, res: Response) => {
+  try {
+    const { eventId, emails } = req.body;
+    
+    if (!eventId || !emails || !Array.isArray(emails)) {
+      return res.status(400).json({ error: '缺少必要參數: eventId, emails' });
+    }
+
+    const qrCodes = [];
+    const { generateQRCode } = require('../services/qr');
+    
+    for (const email of emails) {
+      try {
+        const qrData = await generateQRCode(eventId, email);
+        qrCodes.push({
+          email,
+          qrDataUri: qrData.qrDataUri,
+          checkinUrl: qrData.checkinUrl
+        });
+      } catch (error) {
+        logger.error(`生成 ${email} 的QR code失敗:`, error);
+        // 繼續處理其他email，不中斷整個批次
+      }
+    }
+    
+    res.json({
+      success: true,
+      qrCodes
+    });
+  } catch (error) {
+    logger.error('批次QR預覽錯誤:', error);
+    res.status(500).json({ error: '批次QR code預覽失敗' });
+  }
+});
 
 export default router;
