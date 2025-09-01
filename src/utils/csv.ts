@@ -8,28 +8,29 @@ export async function parseCSV(csvContent: string): Promise<{
   return new Promise((resolve) => {
     const records: ParticipantRecord[] = [];
     const errors: string[] = [];
-    let lineNumber = 0;
 
-    const parser = parse({
+    parse(csvContent, {
       columns: true,
       skip_empty_lines: true,
-      trim: true,
-      encoding: 'utf8'
-    });
+      trim: true
+    }, (err: any, data: any[]) => {
+      if (err) {
+        errors.push(`CSV parsing error: ${err.message}`);
+        resolve({ records, errors });
+        return;
+      }
 
-    parser.on('readable', function() {
-      let record;
-      while ((record = parser.read()) !== null) {
-        lineNumber++;
+      data.forEach((record: any, index: number) => {
+        const lineNumber = index + 1;
         
         if (!record.name || !record.email) {
           errors.push(`Line ${lineNumber}: Missing required fields (name, email)`);
-          continue;
+          return;
         }
 
         if (!isValidEmail(record.email)) {
           errors.push(`Line ${lineNumber}: Invalid email format: ${record.email}`);
-          continue;
+          return;
         }
 
         records.push({
@@ -39,19 +40,10 @@ export async function parseCSV(csvContent: string): Promise<{
           title: record.title?.trim() || undefined,
           ...record
         });
-      }
-    });
+      });
 
-    parser.on('error', function(err) {
-      errors.push(`CSV parsing error: ${err.message}`);
-    });
-
-    parser.on('end', function() {
       resolve({ records, errors });
     });
-
-    parser.write(csvContent);
-    parser.end();
   });
 }
 
