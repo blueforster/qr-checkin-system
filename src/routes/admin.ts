@@ -271,10 +271,10 @@ router.post('/send-batch-enhanced', multiFileUpload.any(), async (req: Request, 
       return res.status(400).json({ error: 'No participants loaded. Please upload CSV first.' });
     }
 
-    const { eventName, eventDate, eventLocation, subject, from, testMode, attachPng, customTemplate } = req.body;
+    const { eventId, eventName, eventDate, eventLocation, subject, from, testMode, attachPng, customTemplate } = req.body;
 
-    if (!eventName || !subject) {
-      return res.status(400).json({ error: 'Missing required fields: eventName, subject' });
+    if (!eventId || !eventName || !subject) {
+      return res.status(400).json({ error: 'Missing required fields: eventId, eventName, subject' });
     }
 
     // 處理附件檔案
@@ -285,7 +285,8 @@ router.post('/send-batch-enhanced', multiFileUpload.any(), async (req: Request, 
       contentType: file.mimetype
     }));
 
-    const options: EmailOptions & { customTemplate?: string; attachments?: any[]; eventDate?: string; eventLocation?: string } = {
+    const options: EmailOptions & { eventId: string; customTemplate?: string; attachments?: any[]; eventDate?: string; eventLocation?: string } = {
+      eventId,
       eventName,
       eventDate,
       eventLocation,

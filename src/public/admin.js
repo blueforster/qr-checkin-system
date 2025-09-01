@@ -322,24 +322,37 @@ async function sendBatchEmails() {
 
     const eventId = document.getElementById('eventId').value;
     const eventName = document.getElementById('eventName').value;
+    const eventDate = document.getElementById('eventDate').value;
+    const eventLocation = document.getElementById('eventLocation').value;
     const subject = document.getElementById('emailSubject').value;
     const from = document.getElementById('fromEmail').value;
     const testMode = document.getElementById('testMode').checked;
     const attachPng = document.getElementById('attachPng').checked;
+    const customTemplate = document.getElementById('emailTemplate').value;
 
     if (!eventId || !eventName || !subject) {
         showAlert('請填寫活動ID、活動名稱和信件主旨', 'error');
         return;
     }
 
-    const sendData = {
-        eventId,
-        eventName,
-        subject,
-        from,
-        testMode,
-        attachPng
-    };
+    const formData = new FormData();
+    formData.append('eventId', eventId);
+    formData.append('eventName', eventName);
+    formData.append('eventDate', eventDate || '');
+    formData.append('eventLocation', eventLocation || '');
+    formData.append('subject', subject);
+    formData.append('from', from || '');
+    formData.append('testMode', testMode);
+    formData.append('attachPng', attachPng);
+    
+    if (customTemplate && customTemplate.trim()) {
+        formData.append('customTemplate', customTemplate);
+    }
+    
+    // 添加附件檔案
+    attachmentFiles.forEach((file, index) => {
+        formData.append(`attachment_${index}`, file);
+    });
 
     const progressDiv = document.getElementById('sendProgress');
     const progressBar = document.getElementById('progressBar');
@@ -358,10 +371,12 @@ async function sendBatchEmails() {
         progressBar.style.width = '20%';
         progressText.textContent = '📡 連接郵件伺服器...';
         
-        const response = await fetch('/admin/send-batch', {
+        const response = await fetch('/admin/send-batch-enhanced', {
             method: 'POST',
-            headers,
-            body: JSON.stringify(sendData)
+            headers: {
+                'Authorization': headers.Authorization
+            },
+            body: formData
         });
 
         progressBar.style.width = '60%';
@@ -369,13 +384,14 @@ async function sendBatchEmails() {
 
         const result = await response.json();
 
-        if (response.ok) {
+        if (response.ok && result.success) {
+            const failedCount = result.totalCount - result.successCount;
             progressBar.style.width = '100%';
-            progressText.textContent = `✅ 寄送完成！成功: ${result.summary.successful}，失敗: ${result.summary.failed}`;
-            showAlert(`📤 批次寄送完成！成功: ${result.summary.successful}/${result.summary.successful + result.summary.failed} 封`, 'success');
+            progressText.textContent = `✅ 寄送完成！成功: ${result.successCount}，失敗: ${failedCount}`;
+            showAlert(`📤 批次寄送完成！成功: ${result.successCount}/${result.totalCount} 封`, 'success');
             
-            if (result.summary.failed > 0) {
-                console.log('失敗的寄送記錄:', result.summary.results.filter(r => !r.success));
+            if (failedCount > 0) {
+                console.log('失敗的寄送記錄:', result.results);
                 showAlert(`⚠️ 部分郵件寄送失敗，請查看控制台獲取詳細資訊`, 'warning');
             }
             
@@ -388,7 +404,7 @@ async function sendBatchEmails() {
         } else {
             progressBar.style.width = '0%';
             progressText.textContent = '❌ 寄送失敗';
-            showAlert(`批次寄送失敗: ${result.error}`, 'error');
+            showAlert(`批次寄送失敗: ${result.error || '未知錯誤'}`, 'error');
         }
     } catch (error) {
         progressBar.style.width = '0%';
