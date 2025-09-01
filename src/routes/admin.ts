@@ -324,7 +324,9 @@ router.post('/send-batch-enhanced', multiFileUpload.any(), async (req: Request, 
 class EnhancedMailer extends Mailer {
   async sendBatch(participants: ParticipantRecord[], options: EmailOptions & { customTemplate?: string; attachments?: any[]; eventId?: string }): Promise<any[]> {
     const results: any[] = [];
-    const eventId = options.eventId || '';
+    const eventId = options.eventId || process.env.EVENT_ID || '';
+    
+    logger.info(`[EnhancedMailer] Using eventId: "${eventId}", from options: "${options.eventId}", from env: "${process.env.EVENT_ID}"`);
     
     if (!eventId) {
       throw new Error('Event ID is required for batch email sending');
