@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import path from 'path';
 import dotenv from 'dotenv';
@@ -62,15 +62,15 @@ app.get('/', (req, res) => {
   res.redirect('/admin.html');
 });
 
-app.get('/scan', (req, res) => {
+app.get('/scan', (req: Request, res: Response) => {
   res.sendFile(path.join(__dirname, 'public', 'scan.html'));
 });
 
-app.use((req, res) => {
+app.use((req: Request, res: Response) => {
   res.status(404).json({ error: 'Not found' });
 });
 
-app.use((error: any, req: any, res: any, next: any) => {
+app.use((error: any, req: Request, res: Response, next: NextFunction) => {
   logger.error('Unhandled error:', error);
   res.status(500).json({ error: 'Internal server error' });
 });
