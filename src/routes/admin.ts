@@ -338,12 +338,22 @@ class EnhancedMailer extends Mailer {
       try {
         const qrData = await this.generateQRData(eventId, participant.email);
         
+        // 調試：檢查 QR 資料
+        logger.info(`QR Data for ${participant.email}:`, {
+          hasQrDataUri: !!qrData.qrDataUri,
+          qrDataUriLength: qrData.qrDataUri?.length || 0,
+          qrDataUriPrefix: qrData.qrDataUri?.substring(0, 50) || 'null',
+          checkinUrl: qrData.checkinUrl,
+          eventId
+        });
+        
         // 使用自定義範本或預設範本
         let html;
         if (options.customTemplate) {
           html = this.renderCustomTemplate(participant, options, qrData, options.customTemplate);
         } else {
-          html = this.renderTemplate(participant, options, qrData);
+          // 調用父類的 renderTemplate 方法
+          html = super.renderTemplate(participant, options, qrData);
         }
         
         const mailOptions: any = {
