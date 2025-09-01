@@ -415,6 +415,10 @@
             <div class="form-group">
                 <label for="templateFile">上傳範本檔案:</label>
                 <input type="file" id="templateFile" accept=".html,.htm" onchange="uploadTemplate()">
+                <div id="templateStatus" class="template-status" style="display: none; margin-top: 10px; padding: 8px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 4px; color: #155724;">
+                    <span id="templateFileName"></span>
+                    <button type="button" onclick="clearTemplate()" style="float: right; background: none; border: none; color: #721c24; cursor: pointer;">✕</button>
+                </div>
                 <small>支援 HTML 格式的範本檔案</small>
             </div>
             <div class="form-group">

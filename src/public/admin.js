@@ -667,6 +667,13 @@ function uploadTemplate() {
     reader.onload = function(e) {
         const content = e.target.result;
         document.getElementById('emailTemplate').value = content;
+        
+        // 顯示上傳狀態
+        const templateStatus = document.getElementById('templateStatus');
+        const templateFileName = document.getElementById('templateFileName');
+        templateFileName.textContent = `📄 已載入範本: ${file.name}`;
+        templateStatus.style.display = 'block';
+        
         showAlert(`範本檔案 "${file.name}" 已載入成功`, 'success');
         
         // 清空檔案選擇器
@@ -678,6 +685,13 @@ function uploadTemplate() {
     };
     
     reader.readAsText(file);
+}
+
+function clearTemplate() {
+    document.getElementById('emailTemplate').value = '';
+    document.getElementById('templateStatus').style.display = 'none';
+    document.getElementById('templateFile').value = '';
+    showAlert('範本已清除', 'info');
 }
 
 async function previewTemplate() {
