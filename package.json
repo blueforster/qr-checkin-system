@@ -7,8 +7,7 @@
     "dev": "ts-node src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "send:test": "node -e \"console.log('Use admin panel to send test emails')\"",
-    "postinstall": "npm run build"
+    "send:test": "node -e \"console.log('Use admin panel to send test emails')\""
   },
   "engines": {
     "node": ">=18.0.0"
