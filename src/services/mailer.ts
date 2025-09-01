@@ -30,8 +30,8 @@ export class Mailer {
       secure: process.env.SMTP_SECURE === 'true',
       user: process.env.SMTP_USER || '',
       pass: process.env.SMTP_PASS || '',
-      fromDisplay: process.env.FROM_DISPLAY || 'Event System',
-      fromEmail: process.env.FROM_EMAIL || '',
+      fromDisplay: 'Event System',
+      fromEmail: 'noreply@example.com',
       rateLimit: parseInt(process.env.RATE_LIMIT_PER_SEC || '3')
     };
 
@@ -85,9 +85,9 @@ export class Mailer {
     return html;
   }
 
-  async sendBatch(participants: ParticipantRecord[], options: EmailOptions): Promise<SendResult[]> {
+  async sendBatch(participants: ParticipantRecord[], options: EmailOptions & { eventId?: string }): Promise<SendResult[]> {
     const results: SendResult[] = [];
-    const eventId = process.env.EVENT_ID || '';
+    const eventId = options.eventId || process.env.EVENT_ID || '';
     
     const participantsToSend = options.testMode ? participants.slice(0, 3) : participants;
     
@@ -141,7 +141,7 @@ export class Mailer {
     return results;
   }
 
-  async sendOne(participant: ParticipantRecord, options: EmailOptions): Promise<SendResult> {
+  async sendOne(participant: ParticipantRecord, options: EmailOptions & { eventId?: string }): Promise<SendResult> {
     const results = await this.sendBatch([participant], options);
     return results[0];
   }

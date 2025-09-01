@@ -17,11 +17,14 @@ export function generateToken(eventId: string, email: string): string {
   return jwt.sign(payload, JWT_SECRET, { algorithm: 'HS256' });
 }
 
-export function verifyToken(token: string): JWTPayload | null {
+export function verifyToken(token: string, expectedEventId?: string): JWTPayload | null {
   try {
     const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as JWTPayload;
     
-    if (decoded.eventId !== process.env.EVENT_ID) {
+    // 如果有指定expectedEventId就檢查，否則使用環境變數或跳過檢查
+    if (expectedEventId && decoded.eventId !== expectedEventId) {
+      return null;
+    } else if (!expectedEventId && process.env.EVENT_ID && decoded.eventId !== process.env.EVENT_ID) {
       return null;
     }
     
