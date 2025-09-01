@@ -140,6 +140,7 @@ async function uploadCSVFile(file) {
         });
 
         const result = await response.json();
+        console.log('CSV upload response:', result); // 調試用
 
         if (response.ok) {
             showAlert(`CSV 上傳成功！共 ${result.total} 筆記錄`, 'success');
@@ -229,6 +230,7 @@ function processCSVOffline(file) {
 }
 
 function displayCSVPreview(result) {
+    console.log('displayCSVPreview called with:', result); // 調試用
     const previewDiv = document.getElementById('csvPreview');
     const statsP = document.getElementById('csvStats');
     const headerThead = document.getElementById('previewHeader');
@@ -275,6 +277,7 @@ function displayCSVPreview(result) {
 
 // 更新參與者選擇器
 function updateParticipantSelector() {
+    console.log('updateParticipantSelector called, participantsData:', participantsData); // 調試用
     const selector = document.getElementById('participantSelector');
     const previewAllBtn = document.getElementById('previewAllBtn');
     
