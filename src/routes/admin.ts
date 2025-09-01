@@ -357,13 +357,20 @@ class EnhancedMailer extends Mailer {
           to: participant.email,
           subject: options.subject.replace('{{eventName}}', options.eventName),
           html: html,
-          attachments: []
+          attachments: [
+            {
+              filename: 'qr-code.png',
+              content: qrData.qrBuffer,
+              contentType: 'image/png',
+              cid: 'qrcode' // 設定 Content-ID，讓 HTML 可以用 cid:qrcode 引用
+            }
+          ]
         };
 
-        // 添加 QR Code 附件
+        // 如果啟用附件模式，額外添加一個可下載的附件
         if (options.attachPng) {
           mailOptions.attachments.push({
-            filename: 'qr-code.png',
+            filename: 'qr-code-download.png',
             content: qrData.qrBuffer,
             contentType: 'image/png'
           });

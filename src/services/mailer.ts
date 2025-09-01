@@ -103,14 +103,23 @@ export class Mailer {
           to: participant.email,
           subject: options.subject.replace('{{eventName}}', options.eventName),
           html: html,
+          attachments: [
+            {
+              filename: 'qr-code.png',
+              content: qrData.qrBuffer,
+              contentType: 'image/png',
+              cid: 'qrcode' // 設定 Content-ID
+            }
+          ]
         };
 
+        // 如果啟用附件模式，額外添加可下載的附件
         if (options.attachPng) {
-          mailOptions.attachments = [{
-            filename: 'qr-code.png',
+          mailOptions.attachments!.push({
+            filename: 'qr-code-download.png',
             content: qrData.qrBuffer,
             contentType: 'image/png'
-          }];
+          });
         }
 
         await this.transporter.sendMail(mailOptions);
