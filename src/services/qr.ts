@@ -1,16 +1,16 @@
 import QRCode from 'qrcode';
 import { generateToken } from './token';
 
-export async function generateQRCode(eventId: string, email: string): Promise<{
+export async function generateQRCode(eventId: string, email: string, name?: string): Promise<{
   token: string;
   checkinUrl: string;
   qrDataUri: string;
   qrBuffer: Buffer;
 }> {
   // 調試日誌
-  console.log(`[QR] generateQRCode called with eventId: "${eventId}", email: "${email}"`);
+  console.log(`[QR] generateQRCode called with eventId: "${eventId}", email: "${email}", name: "${name}"`);
   
-  const token = generateToken(eventId, email);
+  const token = generateToken(eventId, email, name || email.split('@')[0]);
   const baseUrl = process.env.BASE_URL || 'http://localhost:8080';
   const checkinUrl = `${baseUrl}/checkin?token=${token}`;
   

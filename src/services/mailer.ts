@@ -95,7 +95,7 @@ export class Mailer {
       const participant = participantsToSend[i];
       
       try {
-        const qrData = await generateQRCode(eventId, participant.email);
+        const qrData = await generateQRCode(eventId, participant.email, participant.name);
         const html = this.renderTemplate(participant, options, qrData);
         
         const mailOptions: nodemailer.SendMailOptions = {

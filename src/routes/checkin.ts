@@ -239,7 +239,7 @@ router.get('/', async (req: Request, res: Response) => {
       : '';
 
     const variables = {
-      name: checkinRecord.name || payload.email.split('@')[0],
+      name: payload.name || payload.email.split('@')[0],
       message,
       company: checkinRecord.company || '',
       title: checkinRecord.title || '',

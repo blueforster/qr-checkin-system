@@ -338,16 +338,10 @@ class EnhancedMailer extends Mailer {
       const participant = participantsToSend[i];
       
       try {
-        const qrData = await this.generateQRData(eventId, participant.email);
+        const qrData = await this.generateQRData(eventId, participant.email, participant.name);
         
         // 調試：檢查 QR 資料
-        logger.info(`QR Data for ${participant.email}:`, {
-          hasQrDataUri: !!qrData.qrDataUri,
-          qrDataUriLength: qrData.qrDataUri?.length || 0,
-          qrDataUriPrefix: qrData.qrDataUri?.substring(0, 50) || 'null',
-          checkinUrl: qrData.checkinUrl,
-          eventId
-        });
+        logger.info(`QR Data for ${participant.email}: hasQrDataUri=${!!qrData.qrDataUri}, length=${qrData.qrDataUri?.length || 0}, prefix=${qrData.qrDataUri?.substring(0, 30) || 'null'}`);
         
         // 使用自定義範本或預設範本
         let html;
@@ -439,10 +433,10 @@ class EnhancedMailer extends Mailer {
     return details;
   }
 
-  private async generateQRData(eventId: string, email: string) {
+  private async generateQRData(eventId: string, email: string, name?: string) {
     // 這裡需要從原本的 Mailer 複製 QR 產生邏輯
     const { generateQRCode } = require('../services/qr');
-    return await generateQRCode(eventId, email);
+    return await generateQRCode(eventId, email, name);
   }
 
   private delay(ms: number): Promise<void> {

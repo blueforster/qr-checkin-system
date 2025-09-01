@@ -5,11 +5,12 @@ import { randomBytes } from 'crypto';
 const JWT_SECRET = process.env.JWT_SECRET || 'default-secret';
 const JWT_TTL_HOURS = parseInt(process.env.JWT_TTL_HOURS || '240');
 
-export function generateToken(eventId: string, email: string): string {
+export function generateToken(eventId: string, email: string, name: string): string {
   const nonce = randomBytes(16).toString('hex');
   const payload: Omit<JWTPayload, 'iat'> = {
     eventId,
     email,
+    name,
     nonce,
     exp: Math.floor(Date.now() / 1000) + (JWT_TTL_HOURS * 3600)
   };

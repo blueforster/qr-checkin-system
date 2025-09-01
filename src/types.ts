@@ -17,6 +17,7 @@ export interface CheckinRecord extends ParticipantRecord {
 export interface JWTPayload {
   eventId: string;
   email: string;
+  name: string;
   nonce: string;
   exp: number;
   iat: number;
