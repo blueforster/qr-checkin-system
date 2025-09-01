@@ -49,7 +49,11 @@ router.post('/upload-csv', upload.single('csvFile'), async (req: Request, res: R
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    const csvContent = req.file.buffer.toString('utf-8');
+    let csvContent = req.file.buffer.toString('utf-8');
+    // 移除 BOM (Byte Order Mark) 如果存在
+    if (csvContent.charCodeAt(0) === 0xFEFF) {
+      csvContent = csvContent.slice(1);
+    }
     
     const headerErrors = validateCSVHeaders(csvContent);
     if (headerErrors.length > 0) {
@@ -77,7 +81,7 @@ router.post('/upload-csv', upload.single('csvFile'), async (req: Request, res: R
       total: records.length,
       preview: records.slice(0, 20),
       duplicates: duplicates,
-      columns: Object.keys(records[0] || {})
+      columns: records.length > 0 ? Object.keys(records[0]) : []
     });
 
   } catch (error) {
