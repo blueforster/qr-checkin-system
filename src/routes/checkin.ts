@@ -202,7 +202,7 @@ router.get('/', async (req: Request, res: Response) => {
       timestamp,
       eventId: payload.eventId,
       email: payload.email,
-      name: '',
+      name: payload.name || payload.email.split('@')[0],
       company: undefined,
       title: undefined,
       nonce: payload.nonce,
