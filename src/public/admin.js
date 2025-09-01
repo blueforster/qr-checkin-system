@@ -344,39 +344,60 @@ async function sendBatchEmails() {
     const progressDiv = document.getElementById('sendProgress');
     const progressBar = document.getElementById('progressBar');
     const progressText = document.getElementById('progressText');
+    const sendButton = document.querySelector('button[onclick="sendBatchEmails()"]');
     
+    // 顯示進度並禁用按鈕
     progressDiv.classList.remove('hidden');
-    progressBar.style.width = '10%';
-    progressText.textContent = '開始寄送...';
+    progressBar.style.width = '0%';
+    progressText.textContent = '🚀 準備寄送中...';
+    sendButton.disabled = true;
+    sendButton.textContent = '⏳ 寄送中...';
 
     try {
+        // 模擬進度
+        progressBar.style.width = '20%';
+        progressText.textContent = '📡 連接郵件伺服器...';
+        
         const response = await fetch('/admin/send-batch', {
             method: 'POST',
             headers,
             body: JSON.stringify(sendData)
         });
 
+        progressBar.style.width = '60%';
+        progressText.textContent = '📧 處理郵件中...';
+
         const result = await response.json();
 
         if (response.ok) {
             progressBar.style.width = '100%';
-            progressText.textContent = `寄送完成！成功: ${result.summary.successful}，失敗: ${result.summary.failed}`;
-            showAlert(result.message, 'success');
+            progressText.textContent = `✅ 寄送完成！成功: ${result.summary.successful}，失敗: ${result.summary.failed}`;
+            showAlert(`📤 批次寄送完成！成功: ${result.summary.successful}/${result.summary.successful + result.summary.failed} 封`, 'success');
             
             if (result.summary.failed > 0) {
                 console.log('失敗的寄送記錄:', result.summary.results.filter(r => !r.success));
+                showAlert(`⚠️ 部分郵件寄送失敗，請查看控制台獲取詳細資訊`, 'warning');
             }
             
             loadStats();
+            
+            // 3秒後隱藏進度條
+            setTimeout(() => {
+                progressDiv.classList.add('hidden');
+            }, 3000);
         } else {
             progressBar.style.width = '0%';
-            progressText.textContent = '寄送失敗';
+            progressText.textContent = '❌ 寄送失敗';
             showAlert(`批次寄送失敗: ${result.error}`, 'error');
         }
     } catch (error) {
         progressBar.style.width = '0%';
-        progressText.textContent = '寄送錯誤';
+        progressText.textContent = '❌ 連接錯誤';
         showAlert(`批次寄送錯誤: ${error.message}`, 'error');
+    } finally {
+        // 恢復按鈕狀態
+        sendButton.disabled = false;
+        sendButton.textContent = '📤 開始批次寄送';
     }
 }
 
@@ -978,59 +999,6 @@ function formatFileSize(bytes) {
 }
 
 // 修改發送郵件函數支援自定義範本和附件
-async function sendBatchEmails() {
-    const eventName = document.getElementById('eventName').value;
-    const eventDate = document.getElementById('eventDate').value;
-    const eventLocation = document.getElementById('eventLocation').value;
-    const subject = document.getElementById('emailSubject').value;
-    const from = document.getElementById('fromEmail').value;
-    const testMode = document.getElementById('testMode').checked;
-    const attachPng = document.getElementById('attachPng').checked;
-    const customTemplate = document.getElementById('emailTemplate').value;
-
-    if (!eventName || !subject) {
-        showAlert('請填寫活動名稱和信件主旨', 'error');
-        return;
-    }
-
-    try {
-        const formData = new FormData();
-        formData.append('eventName', eventName);
-        formData.append('eventDate', eventDate);
-        formData.append('eventLocation', eventLocation);
-        formData.append('subject', subject);
-        formData.append('from', from);
-        formData.append('testMode', testMode);
-        formData.append('attachPng', attachPng);
-        
-        if (customTemplate.trim()) {
-            formData.append('customTemplate', customTemplate);
-        }
-        
-        // 添加附件檔案
-        attachmentFiles.forEach((file, index) => {
-            formData.append(`attachment_${index}`, file);
-        });
-
-        const response = await fetch('/admin/send-batch-enhanced', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${adminPass}`
-            },
-            body: formData
-        });
-
-        const result = await response.json();
-        
-        if (result.success) {
-            showAlert(`批次寄送成功: ${result.successCount}/${result.totalCount} 封郵件已寄出`, 'success');
-        } else {
-            showAlert(`批次寄送失敗: ${result.error}`, 'error');
-        }
-    } catch (error) {
-        showAlert(`批次寄送錯誤: ${error.message}`, 'error');
-    }
-}
 
 window.addEventListener('load', () => {
     const today = new Date().toISOString().split('T')[0];
