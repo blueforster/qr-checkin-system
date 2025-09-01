@@ -746,7 +746,8 @@ async function previewTemplate() {
         .replace(/\{\{title\}\}/g, participant.title || '')
         .replace(/\{\{participantDetails\}\}/g, participantDetails)
         .replace(/\{\{checkinUrl\}\}/g, '#')
-        .replace(/\{\{qrDataUri\}\}/g, qrDataUri);
+        .replace(/\{\{qrDataUri\}\}/g, qrDataUri)
+        .replace(/cid:qrcode/g, qrDataUri); // 預覽時將 CID 替換為 data URI
     
     const previewWindow = window.open('', '_blank', 'width=800,height=600');
     previewWindow.document.write(`
@@ -940,7 +941,8 @@ async function previewAllParticipants() {
             .replace(/\{\{title\}\}/g, participant.title || '')
             .replace(/\{\{participantDetails\}\}/g, participantDetails)
             .replace(/\{\{checkinUrl\}\}/g, '#')
-            .replace(/\{\{qrDataUri\}\}/g, qrDataUri);
+            .replace(/\{\{qrDataUri\}\}/g, qrDataUri)
+            .replace(/cid:qrcode/g, qrDataUri); // 預覽時將 CID 替換為 data URI
         
         htmlContent += `
             <div class="participant-preview" id="participant-${index}">
