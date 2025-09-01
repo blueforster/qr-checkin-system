@@ -54,7 +54,9 @@ async function loadStats() {
     if (!headers) return;
 
     try {
-        const response = await fetch('/admin/stats', { headers });
+        const eventId = document.getElementById('eventId').value;
+        const url = eventId ? `/admin/stats?eventId=${encodeURIComponent(eventId)}` : '/admin/stats';
+        const response = await fetch(url, { headers });
         const stats = await response.json();
 
         if (response.ok) {
@@ -315,18 +317,20 @@ async function sendBatchEmails() {
     const headers = getAuthHeaders();
     if (!headers) return;
 
+    const eventId = document.getElementById('eventId').value;
     const eventName = document.getElementById('eventName').value;
     const subject = document.getElementById('emailSubject').value;
     const from = document.getElementById('fromEmail').value;
     const testMode = document.getElementById('testMode').checked;
     const attachPng = document.getElementById('attachPng').checked;
 
-    if (!eventName || !subject) {
-        showAlert('請填寫活動名稱和信件主旨', 'error');
+    if (!eventId || !eventName || !subject) {
+        showAlert('請填寫活動ID、活動名稱和信件主旨', 'error');
         return;
     }
 
     const sendData = {
+        eventId,
         eventName,
         subject,
         from,
@@ -377,17 +381,19 @@ async function resendEmail() {
     const headers = getAuthHeaders();
     if (!headers) return;
 
+    const eventId = document.getElementById('eventId').value;
     const email = document.getElementById('resendEmail').value;
     const eventName = document.getElementById('resendEventName').value;
     const subject = document.getElementById('resendSubject').value;
     const attachPng = document.getElementById('resendAttachPng').checked;
 
-    if (!email || !eventName || !subject) {
-        showAlert('請填寫所有必要欄位', 'error');
+    if (!eventId || !email || !eventName || !subject) {
+        showAlert('請填寫所有必要欄位（包括活動ID）', 'error');
         return;
     }
 
     const resendData = {
+        eventId,
         email,
         eventName,
         subject,
@@ -634,8 +640,9 @@ function uploadTemplate() {
     reader.readAsText(file);
 }
 
-function previewTemplate() {
+async function previewTemplate() {
     const template = document.getElementById('emailTemplate').value;
+    const eventId = document.getElementById('eventId').value;
     const eventName = document.getElementById('eventName').value || '範例活動';
     const eventDate = document.getElementById('eventDate').value || '請參考活動通知或官網';
     const eventLocation = document.getElementById('eventLocation').value || '請參考活動通知或官網';
@@ -662,6 +669,32 @@ function previewTemplate() {
         participantDetails += `<p><strong>職稱：</strong>${participant.title}</p>`;
     }
     
+    // 生成真實的QR code
+    let qrDataUri = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
+    
+    if (eventId && participant.email) {
+        try {
+            const headers = getAuthHeaders();
+            if (headers) {
+                const response = await fetch('/admin/preview-qr', {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({
+                        eventId: eventId,
+                        email: participant.email
+                    })
+                });
+                
+                if (response.ok) {
+                    const qrData = await response.json();
+                    qrDataUri = qrData.qrDataUri;
+                }
+            }
+        } catch (error) {
+            console.warn('無法生成QR code預覽:', error);
+        }
+    }
+    
     // 替換範本變數
     let preview = template
         .replace(/\{\{eventName\}\}/g, eventName)
@@ -673,7 +706,7 @@ function previewTemplate() {
         .replace(/\{\{title\}\}/g, participant.title || '')
         .replace(/\{\{participantDetails\}\}/g, participantDetails)
         .replace(/\{\{checkinUrl\}\}/g, '#')
-        .replace(/\{\{qrDataUri\}\}/g, 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==');
+        .replace(/\{\{qrDataUri\}\}/g, qrDataUri);
     
     const previewWindow = window.open('', '_blank', 'width=800,height=600');
     previewWindow.document.write(`
@@ -713,8 +746,9 @@ function previewTemplate() {
 }
 
 // 批次預覽所有參與者的郵件
-function previewAllParticipants() {
+async function previewAllParticipants() {
     const template = document.getElementById('emailTemplate').value;
+    const eventId = document.getElementById('eventId').value;
     const eventName = document.getElementById('eventName').value || '範例活動';
     const eventDate = document.getElementById('eventDate').value || '請參考活動通知或官網';
     const eventLocation = document.getElementById('eventLocation').value || '請參考活動通知或官網';
@@ -811,6 +845,36 @@ function previewAllParticipants() {
     
     htmlContent += `</div>`;
     
+    // 顯示載入提示
+    showAlert('正在生成批次預覽，請稍候...', 'info');
+    
+    // 批次生成QR codes
+    const qrDataMap = new Map();
+    if (eventId) {
+        try {
+            const headers = getAuthHeaders();
+            if (headers) {
+                const batchQRResponse = await fetch('/admin/batch-preview-qr', {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({
+                        eventId: eventId,
+                        emails: participantsData.map(p => p.email)
+                    })
+                });
+                
+                if (batchQRResponse.ok) {
+                    const batchQRData = await batchQRResponse.json();
+                    batchQRData.qrCodes.forEach(qr => {
+                        qrDataMap.set(qr.email, qr.qrDataUri);
+                    });
+                }
+            }
+        } catch (error) {
+            console.warn('無法生成批次QR code預覽:', error);
+        }
+    }
+    
     // 生成每位參與者的郵件預覽
     participantsData.forEach((participant, index) => {
         // 生成參與者詳細資訊
@@ -821,6 +885,9 @@ function previewAllParticipants() {
         if (participant.title) {
             participantDetails += `<p><strong>職稱：</strong>${participant.title}</p>`;
         }
+        
+        // 獲取對應的QR code或使用預設圖片
+        const qrDataUri = qrDataMap.get(participant.email) || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
         
         // 替換範本變數
         let participantPreview = template
@@ -833,7 +900,7 @@ function previewAllParticipants() {
             .replace(/\{\{title\}\}/g, participant.title || '')
             .replace(/\{\{participantDetails\}\}/g, participantDetails)
             .replace(/\{\{checkinUrl\}\}/g, '#')
-            .replace(/\{\{qrDataUri\}\}/g, 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==');
+            .replace(/\{\{qrDataUri\}\}/g, qrDataUri);
         
         htmlContent += `
             <div class="participant-preview" id="participant-${index}">
@@ -963,9 +1030,21 @@ async function sendBatchEmails() {
 }
 
 window.addEventListener('load', () => {
+    const today = new Date().toISOString().split('T')[0];
+    const formattedDate = new Date().toLocaleDateString('zh-TW', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        weekday: 'long'
+    });
+    
+    // 設定預設值（用戶可以手動修改）
+    document.getElementById('eventId').value = `meeting-${today}`;
     document.getElementById('eventName').value = 'AI Orators Monthly Meeting';
+    document.getElementById('eventDate').value = `${formattedDate} 13:00–20:00`;
+    document.getElementById('eventLocation').value = '台北市信義區忠孝東路五段68號19樓（市政府站3號出口）';
     document.getElementById('emailSubject').value = '[{{eventName}}] 你的專屬入場QR碼';
-    document.getElementById('fromEmail').value = 'AI Orators <noreply@example.com>';
+    document.getElementById('fromEmail').value = 'AI Orators <AI.Orator@Toastmasters.org.tw>';
     
     document.getElementById('resendEventName').value = 'AI Orators Monthly Meeting';
     document.getElementById('resendSubject').value = '[活動名稱] 你的專屬入場QR碼';
