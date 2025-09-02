@@ -279,7 +279,7 @@ router.post('/send-batch-enhanced', multiFileUpload.any(), async (req: Request, 
       return res.status(400).json({ error: 'No participants loaded. Please upload CSV first.' });
     }
 
-    const { eventId, eventName, eventDate, eventLocation, subject, from, testMode, attachPng, customTemplate } = req.body;
+    const { eventId, eventName, eventDate, eventLocation, meetLocation, secondRun, subject, from, testMode, attachPng, customTemplate } = req.body;
 
     if (!eventId || !eventName || !subject) {
       return res.status(400).json({ error: 'Missing required fields: eventId, eventName, subject' });
@@ -293,11 +293,13 @@ router.post('/send-batch-enhanced', multiFileUpload.any(), async (req: Request, 
       contentType: file.mimetype
     }));
 
-    const options: EmailOptions & { eventId: string; customTemplate?: string; attachments?: any[]; eventDate?: string; eventLocation?: string } = {
+    const options: EmailOptions & { eventId: string; customTemplate?: string; attachments?: any[]; } = {
       eventId,
       eventName,
-      eventDate,
-      eventLocation,
+      eventDate: eventDate || '',
+      eventLocation: eventLocation || '',
+      meetLocation: meetLocation || '',
+      secondRun: secondRun || '',
       subject,
       from: from || 'Event System <noreply@example.com>',
       testMode: testMode === 'true',
