@@ -46,7 +46,7 @@ export class Mailer {
     });
 
     try {
-      this.emailTemplate = readFileSync(join(__dirname, '../../templates/email.html'), 'utf-8');
+      this.emailTemplate = readFileSync(join(__dirname, '../templates/email.html'), 'utf-8');
     } catch (error) {
       logger.error('Failed to load email template', error);
       throw new Error('Email template not found');
