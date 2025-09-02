@@ -146,7 +146,7 @@ router.post('/send-batch', async (req: Request, res: Response) => {
 
 router.post('/resend-one', async (req: Request, res: Response) => {
   try {
-    const { eventId, email, eventName, subject, attachPng = false } = req.body;
+    const { eventId, email, eventName, eventDate, eventLocation, meetLocation, secondRun, subject, from, attachPng = false } = req.body;
 
     if (!eventId || !email || !eventName || !subject) {
       return res.status(400).json({ error: 'Missing required fields: eventId, email, eventName, subject' });
@@ -160,8 +160,12 @@ router.post('/resend-one', async (req: Request, res: Response) => {
     const options: EmailOptions & { eventId: string } = {
       eventId,
       eventName,
+      eventDate: eventDate || '',
+      eventLocation: eventLocation || '',
+      meetLocation: meetLocation || '',
+      secondRun: secondRun || '',
       subject,
-      from: 'Event System <noreply@example.com>',
+      from: from || 'Event System <noreply@example.com>',
       attachPng: Boolean(attachPng)
     };
 
@@ -413,6 +417,13 @@ class EnhancedMailer extends Mailer {
     
     const participantDetails = this.generateParticipantDetails(participant);
     
+    // 處理其他資訊區塊
+    const secondRunSection = options.secondRun ? 
+      `<div style="margin-top: 15px;">
+          <p><strong>其他資訊：</strong></p>
+          <div style="white-space: pre-line; background: #f8f9fa; padding: 10px; border-radius: 5px; margin: 5px 0;">${options.secondRun}</div>
+      </div>` : '';
+    
     const replacements = {
       '{{name}}': participant.name || '',
       '{{email}}': participant.email || '',
@@ -422,6 +433,8 @@ class EnhancedMailer extends Mailer {
       '{{eventName}}': options.eventName || '',
       '{{eventDate}}': options.eventDate || '請參考活動通知或官網',
       '{{eventLocation}}': options.eventLocation || '請參考活動通知或官網',
+      '{{meetLocation}}': options.meetLocation || '請提前15分鐘抵達會場',
+      '{{secondRunSection}}': secondRunSection,
       '{{checkinUrl}}': qrData.checkinUrl || '',
       '{{qrDataUri}}': qrData.qrDataUri || '',
     };
