@@ -440,7 +440,12 @@ async function resendEmail() {
         eventId,
         email,
         eventName,
+        eventDate: document.getElementById('eventDate').value || '',
+        eventLocation: document.getElementById('eventLocation').value || '',
+        meetLocation: document.getElementById('meetLocation').value || '',
+        secondRun: document.getElementById('secondRun').value || '',
         subject,
+        from: document.getElementById('fromEmail').value || '',
         attachPng
     };
 
@@ -1086,3 +1091,140 @@ window.addEventListener('load', () => {
     
     loadStats();
 });
+
+// 臨時新增參與者功能
+async function addTempParticipant() {
+    const headers = getAuthHeaders();
+    if (!headers) return;
+
+    const name = document.getElementById('tempName').value.trim();
+    const email = document.getElementById('tempEmail').value.trim();
+    const company = document.getElementById('tempCompany').value.trim();
+    const title = document.getElementById('tempTitle').value.trim();
+    const sendEmail = document.getElementById('tempSendEmail').checked;
+
+    if (!name || !email) {
+        showAlert('請填寫姓名和 Email 地址', 'error');
+        return;
+    }
+
+    // 基本 email 格式驗證
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        showAlert('請輸入有效的 Email 地址', 'error');
+        return;
+    }
+
+    const tempData = {
+        name,
+        email,
+        company: company || undefined,
+        title: title || undefined,
+        sendEmail
+    };
+
+    // 如果要寄信，需要活動資訊
+    if (sendEmail) {
+        const eventId = document.getElementById('eventId').value;
+        const eventName = document.getElementById('eventName').value;
+        const subject = document.getElementById('emailSubject').value;
+        
+        if (!eventId || !eventName || !subject) {
+            showAlert('要寄送邀請信需要填寫活動基本資料和信件主旨', 'error');
+            return;
+        }
+
+        tempData.eventId = eventId;
+        tempData.eventName = eventName;
+        tempData.eventDate = document.getElementById('eventDate').value || '';
+        tempData.eventLocation = document.getElementById('eventLocation').value || '';
+        tempData.meetLocation = document.getElementById('meetLocation').value || '';
+        tempData.secondRun = document.getElementById('secondRun').value || '';
+        tempData.subject = subject;
+        tempData.from = document.getElementById('fromEmail').value || '';
+    }
+
+    try {
+        showTempStatus('正在新增參與者...', 'info');
+        
+        const response = await fetch('/admin/add-temp-participant', {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(tempData)
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+            showTempStatus(
+                `✅ 新增成功！${result.emailSent ? ' 邀請信已寄出' : ' 未寄送邀請信'}`, 
+                'success'
+            );
+            
+            // 清空表單
+            document.getElementById('tempName').value = '';
+            document.getElementById('tempEmail').value = '';
+            document.getElementById('tempCompany').value = '';
+            document.getElementById('tempTitle').value = '';
+            
+            // 更新統計
+            loadStats();
+            
+            // 更新預覽表格顯示（包含新增的參與者）
+            refreshParticipantList();
+        } else {
+            showTempStatus(`❌ ${result.error || '新增失敗'}`, 'error');
+        }
+
+    } catch (error) {
+        console.error('Add temp participant error:', error);
+        showTempStatus('❌ 網路錯誤，請稍後再試', 'error');
+    }
+}
+
+function showTempStatus(message, type) {
+    const statusDiv = document.getElementById('tempStatus');
+    statusDiv.style.display = 'block';
+    statusDiv.className = `alert alert-${type}`;
+    statusDiv.textContent = message;
+    
+    // 3秒後隱藏成功訊息
+    if (type === 'success') {
+        setTimeout(() => {
+            statusDiv.style.display = 'none';
+        }, 3000);
+    }
+}
+
+// 重新整理參與者列表顯示
+async function refreshParticipantList() {
+    const headers = getAuthHeaders();
+    if (!headers) return;
+
+    try {
+        const response = await fetch('/admin/get-current-participants', {
+            method: 'GET',
+            headers: headers
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            if (result.success && result.participants) {
+                // 更新全域變數
+                currentParticipants = result.participants;
+                
+                // 更新預覽顯示
+                const mockResult = {
+                    total: result.participants.length,
+                    preview: result.participants.slice(0, 20),
+                    columns: ['name', 'email', 'company', 'title', 'source']
+                };
+                
+                displayCSVPreview(mockResult);
+                showAlert(`參與者列表已更新，共 ${result.participants.length} 人（含臨時新增）`, 'success');
+            }
+        }
+    } catch (error) {
+        console.warn('Failed to refresh participant list:', error);
+    }
+}

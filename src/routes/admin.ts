@@ -183,6 +183,109 @@ router.post('/resend-one', async (req: Request, res: Response) => {
   }
 });
 
+router.post('/add-temp-participant', async (req: Request, res: Response) => {
+  try {
+    const { name, email, company, title, sendEmail, eventId, eventName, eventDate, eventLocation, meetLocation, secondRun, subject, from } = req.body;
+
+    if (!name || !email) {
+      return res.status(400).json({ error: 'Name and email are required' });
+    }
+
+    // 基本 email 格式驗證
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    // 檢查是否已存在
+    const existing = currentParticipants.find(p => p.email === email);
+    if (existing) {
+      return res.status(409).json({ error: '此 Email 已存在於參與者名單中' });
+    }
+
+    // 建立新參與者記錄
+    const newParticipant = {
+      name,
+      email,
+      company: company || undefined,
+      title: title || undefined,
+      isTemp: true // 標記為臨時新增
+    };
+
+    // 新增到記憶體名單
+    currentParticipants.push(newParticipant);
+    logger.info(`Added temporary participant: ${name} <${email}>`);
+
+    let emailSent = false;
+    let emailError = null;
+
+    // 如果需要寄送邀請信
+    if (sendEmail) {
+      if (!eventId || !eventName || !subject) {
+        return res.status(400).json({ error: 'Event information is required for sending email' });
+      }
+
+      try {
+        const options: EmailOptions & { eventId: string } = {
+          eventId,
+          eventName,
+          eventDate: eventDate || '',
+          eventLocation: eventLocation || '',
+          meetLocation: meetLocation || '',
+          secondRun: secondRun || '',
+          subject,
+          from: from || 'Event System <noreply@example.com>'
+        };
+
+        const result = await mailer.sendOne(newParticipant, options);
+        emailSent = result.success;
+        
+        if (!result.success) {
+          emailError = result.error;
+          logger.warn(`Failed to send email to temp participant ${email}: ${result.error}`);
+        } else {
+          logger.info(`Email sent to temp participant: ${email}`);
+        }
+      } catch (error) {
+        logger.error('Failed to send email to temp participant:', error);
+        emailError = 'Email sending failed';
+      }
+    }
+
+    res.json({ 
+      success: true, 
+      participant: newParticipant,
+      emailSent,
+      emailError,
+      message: `參與者 ${name} 已新增${emailSent ? '，邀請信已寄出' : sendEmail ? '，但邀請信寄送失敗' : ''}`
+    });
+
+  } catch (error) {
+    logger.error('Add temp participant error:', error);
+    res.status(500).json({ error: 'Failed to add participant' });
+  }
+});
+
+router.get('/get-current-participants', async (req: Request, res: Response) => {
+  try {
+    // 為參與者添加來源標示（原始 CSV 或臨時新增）
+    const participantsWithSource = currentParticipants.map((participant, index) => ({
+      ...participant,
+      source: participant.isTemp ? '臨時新增' : 'CSV'
+    }));
+
+    res.json({
+      success: true,
+      participants: participantsWithSource,
+      total: currentParticipants.length
+    });
+
+  } catch (error) {
+    logger.error('Get current participants error:', error);
+    res.status(500).json({ error: 'Failed to get participants' });
+  }
+});
+
 router.get('/export-checkins', async (req: Request, res: Response) => {
   try {
     const eventId = req.query.eventId as string || process.env.EVENT_ID;

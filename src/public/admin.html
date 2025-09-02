@@ -511,6 +511,35 @@
         </div>
 
         <div class="card">
+            <h2>➕ 臨時新增參與者</h2>
+            <p>適合活動當天或緊急情況下新增參與者，會立即寄送邀請信</p>
+            <div class="form-group">
+                <label for="tempName">姓名 *:</label>
+                <input type="text" id="tempName" placeholder="王小明" required>
+            </div>
+            <div class="form-group">
+                <label for="tempEmail">Email *:</label>
+                <input type="email" id="tempEmail" placeholder="wang@example.com" required>
+            </div>
+            <div class="form-group">
+                <label for="tempCompany">公司 (可選):</label>
+                <input type="text" id="tempCompany" placeholder="科技公司">
+            </div>
+            <div class="form-group">
+                <label for="tempTitle">職稱 (可選):</label>
+                <input type="text" id="tempTitle" placeholder="工程師">
+            </div>
+            <div style="margin-bottom: 20px;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; width: fit-content;">
+                    <input type="checkbox" id="tempSendEmail" checked style="width: auto; margin: 0; padding: 0;">
+                    <span>立即寄送邀請信</span>
+                </label>
+            </div>
+            <button class="btn btn-success" onclick="addTempParticipant()">➕ 新增參與者</button>
+            <div id="tempStatus" style="margin-top: 10px; display: none;"></div>
+        </div>
+
+        <div class="card">
             <h2>📊 匯出報到記錄</h2>
             <p>匯出已報到的參與者資料為 CSV 格式</p>
             <button class="btn btn-secondary" onclick="exportCheckins()">📥 匯出報到記錄</button>
