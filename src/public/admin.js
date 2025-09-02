@@ -324,6 +324,8 @@ async function sendBatchEmails() {
     const eventName = document.getElementById('eventName').value;
     const eventDate = document.getElementById('eventDate').value;
     const eventLocation = document.getElementById('eventLocation').value;
+    const meetLocation = document.getElementById('meetLocation').value;
+    const secondRun = document.getElementById('secondRun').value;
     const subject = document.getElementById('emailSubject').value;
     const from = document.getElementById('fromEmail').value;
     const testMode = document.getElementById('testMode').checked;
@@ -340,6 +342,8 @@ async function sendBatchEmails() {
     formData.append('eventName', eventName);
     formData.append('eventDate', eventDate || '');
     formData.append('eventLocation', eventLocation || '');
+    formData.append('meetLocation', meetLocation || '');
+    formData.append('secondRun', secondRun || '');
     formData.append('subject', subject);
     formData.append('from', from || '');
     formData.append('testMode', testMode);
@@ -700,6 +704,8 @@ async function previewTemplate() {
     const eventName = document.getElementById('eventName').value || '範例活動';
     const eventDate = document.getElementById('eventDate').value || '請參考活動通知或官網';
     const eventLocation = document.getElementById('eventLocation').value || '請參考活動通知或官網';
+    const meetLocation = document.getElementById('meetLocation').value || '請提前15分鐘抵達會場';
+    const secondRun = document.getElementById('secondRun').value || '';
     
     if (!template.trim()) {
         showAlert('請先輸入或載入郵件範本', 'error');
@@ -749,11 +755,20 @@ async function previewTemplate() {
         }
     }
     
+    // 處理其他資訊區塊
+    const secondRunSection = secondRun ? 
+        `<div style="margin-top: 15px;">
+            <p><strong>其他資訊：</strong></p>
+            <div style="white-space: pre-line; background: #f8f9fa; padding: 10px; border-radius: 5px; margin: 5px 0;">${secondRun}</div>
+        </div>` : '';
+
     // 替換範本變數
     let preview = template
         .replace(/\{\{eventName\}\}/g, eventName)
         .replace(/\{\{eventDate\}\}/g, eventDate)
         .replace(/\{\{eventLocation\}\}/g, eventLocation)
+        .replace(/\{\{meetLocation\}\}/g, meetLocation)
+        .replace(/\{\{secondRunSection\}\}/g, secondRunSection)
         .replace(/\{\{name\}\}/g, participant.name || '')
         .replace(/\{\{email\}\}/g, participant.email || '')
         .replace(/\{\{company\}\}/g, participant.company || '')
@@ -807,6 +822,8 @@ async function previewAllParticipants() {
     const eventName = document.getElementById('eventName').value || '範例活動';
     const eventDate = document.getElementById('eventDate').value || '請參考活動通知或官網';
     const eventLocation = document.getElementById('eventLocation').value || '請參考活動通知或官網';
+    const meetLocation = document.getElementById('meetLocation').value || '請提前15分鐘抵達會場';
+    const secondRun = document.getElementById('secondRun').value || '';
     
     if (!template.trim()) {
         showAlert('請先輸入或載入郵件範本', 'error');
@@ -944,11 +961,20 @@ async function previewAllParticipants() {
         // 獲取對應的QR code或使用預設圖片
         const qrDataUri = qrDataMap.get(participant.email) || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
         
+        // 處理其他資訊區塊
+        const secondRunSection = secondRun ? 
+            `<div style="margin-top: 15px;">
+                <p><strong>其他資訊：</strong></p>
+                <div style="white-space: pre-line; background: #f8f9fa; padding: 10px; border-radius: 5px; margin: 5px 0;">${secondRun}</div>
+            </div>` : '';
+
         // 替換範本變數
         let participantPreview = template
             .replace(/\{\{eventName\}\}/g, eventName)
             .replace(/\{\{eventDate\}\}/g, eventDate)
             .replace(/\{\{eventLocation\}\}/g, eventLocation)
+            .replace(/\{\{meetLocation\}\}/g, meetLocation)
+            .replace(/\{\{secondRunSection\}\}/g, secondRunSection)
             .replace(/\{\{name\}\}/g, participant.name || '')
             .replace(/\{\{email\}\}/g, participant.email || '')
             .replace(/\{\{company\}\}/g, participant.company || '')
@@ -1046,6 +1072,8 @@ window.addEventListener('load', () => {
     document.getElementById('eventName').value = 'AI Orators Monthly Meeting';
     document.getElementById('eventDate').value = `${formattedDate} 13:00–20:00`;
     document.getElementById('eventLocation').value = '台北市信義區忠孝東路五段68號19樓（市政府站3號出口）';
+    document.getElementById('meetLocation').value = '請於活動開始前15分鐘在1樓大廳集合';
+    document.getElementById('secondRun').value = '';
     document.getElementById('emailSubject').value = '[{{eventName}}] 你的專屬入場QR碼';
     document.getElementById('fromEmail').value = 'AI Orators <AI.Orator@Toastmasters.org.tw>';
     

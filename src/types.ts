@@ -25,6 +25,10 @@ export interface JWTPayload {
 
 export interface EmailOptions {
   eventName: string;
+  eventDate?: string;
+  eventLocation?: string;
+  meetLocation?: string;
+  secondRun?: string;
   subject: string;
   from: string;
   testMode?: boolean;

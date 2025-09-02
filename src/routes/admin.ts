@@ -96,7 +96,7 @@ router.post('/send-batch', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'No participants loaded. Please upload CSV first.' });
     }
 
-    const { eventId, eventName, subject, from, testMode = false, attachPng = false } = req.body;
+    const { eventId, eventName, eventDate, eventLocation, meetLocation, secondRun, subject, from, testMode = false, attachPng = false } = req.body;
 
     if (!eventId || !eventName || !subject) {
       return res.status(400).json({ error: 'Missing required fields: eventId, eventName, subject' });
@@ -105,6 +105,10 @@ router.post('/send-batch', async (req: Request, res: Response) => {
     const options: EmailOptions & { eventId: string } = {
       eventId,
       eventName,
+      eventDate: eventDate || '',
+      eventLocation: eventLocation || '',
+      meetLocation: meetLocation || '',
+      secondRun: secondRun || '',
       subject,
       from: from || 'Event System <noreply@example.com>',
       testMode: Boolean(testMode),
@@ -353,7 +357,7 @@ class EnhancedMailer extends Mailer {
         }
         
         const mailOptions: any = {
-          from: 'Event System <noreply@example.com>',
+          from: options.from,
           to: participant.email,
           subject: options.subject.replace('{{eventName}}', options.eventName),
           html: html,

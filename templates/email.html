@@ -24,10 +24,11 @@
         }
         
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+            color: #2c3e50;
             padding: 40px 30px;
             text-align: center;
+            border: 2px solid #667eea;
         }
         
         .header h1 {
@@ -102,14 +103,15 @@
         
         .checkin-button {
             display: inline-block;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: linear-gradient(135deg, #e8f4f8 0%, #f8f9fa 100%);
+            color: #2c3e50;
             text-decoration: none;
             padding: 15px 30px;
             border-radius: 25px;
             font-size: 16px;
             font-weight: 600;
             margin: 20px 10px;
+            border: 2px solid #667eea;
             box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
             transition: transform 0.2s, box-shadow 0.2s;
         }
@@ -144,11 +146,12 @@
         }
         
         .footer {
-            background: #2c3e50;
-            color: white;
+            background: #f8f9fa;
+            color: #2c3e50;
             padding: 30px;
             text-align: center;
             font-size: 14px;
+            border: 2px solid #dee2e6;
         }
         
         .footer p {
@@ -159,7 +162,7 @@
         .footer .contact {
             margin-top: 20px;
             padding-top: 20px;
-            border-top: 1px solid #34495e;
+            border-top: 1px solid #dee2e6;
         }
         
         .social-links {
@@ -250,8 +253,10 @@
             <div class="info-card">
                 <h3>📅 活動資訊</h3>
                 <p><strong>活動名稱：</strong>{{eventName}}</p>
-                <p><strong>日期時間：</strong>{{eventDate}}</p>
-                <p><strong>地點：</strong>{{eventLocation}}</p>
+                <p><strong>活動時間：</strong>{{eventDate}}</p>
+                <p><strong>集合地點：</strong>{{meetLocation}}</p>
+                <p><strong>活動地點：</strong>{{eventLocation}}</p>
+                {{secondRunSection}}
                 <p><strong>注意事項：</strong></p>
                 <ul style="margin: 10px 0; padding-left: 20px;">
                     <li>請提前 15-20 分鐘抵達會場</li>
@@ -276,7 +281,7 @@
             
             <div class="contact">
                 <p>如有問題請聯繫：</p>
-                <p>📧 Email: <span style="color: white;">AI.Orator@Toastmasters.org.tw</span></p>
+                <p>📧 Email: <span style="color: #2c3e50;">AI.Orator@Toastmasters.org.tw</span></p>
             </div>
             
             <p style="font-size: 12px; opacity: 0.6; margin-top: 20px;">

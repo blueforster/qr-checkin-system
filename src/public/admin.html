@@ -374,6 +374,18 @@
                 <small>範本變數：{{eventLocation}}</small>
             </div>
             
+            <div class="form-group">
+                <label for="meetLocation">集合地點:</label>
+                <input type="text" id="meetLocation" placeholder="請於活動開始前15分鐘在1樓大廳集合">
+                <small>範本變數：{{meetLocation}}</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="secondRun">其他資訊:</label>
+                <textarea id="secondRun" rows="3" placeholder="例如：活動後聚餐地點：台北101美食街 18:00-20:00&#10;歡迎大家一起參與交流！"></textarea>
+                <small>範本變數：{{secondRun}}</small>
+            </div>
+            
             <div style="color: #e74c3c; font-weight: 600; margin-top: 15px; padding: 10px; background: #fff5f5; border: 1px solid #ffc9c9; border-radius: 5px;">
                 ⚠️ 請依活動修改活動基本資料
             </div>
@@ -410,7 +422,7 @@
             <div class="form-group">
                 <label for="emailTemplate">郵件範本 (HTML):</label>
                 <textarea id="emailTemplate" rows="15" placeholder="輸入 HTML 郵件範本..."></textarea>
-                <small>可用變數: {{name}}, {{email}}, {{company}}, {{title}}, {{eventName}}, {{eventDate}}, {{eventLocation}}, {{checkinUrl}}, {{qrDataUri}}, {{participantDetails}}</small>
+                <small>可用變數: {{name}}, {{email}}, {{company}}, {{title}}, {{eventName}}, {{eventDate}}, {{eventLocation}}, {{meetLocation}}, {{secondRunSection}}, {{checkinUrl}}, {{qrDataUri}}, {{participantDetails}}</small>
             </div>
             <div class="form-group">
                 <label for="templateFile">上傳範本檔案:</label>
