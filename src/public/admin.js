@@ -321,20 +321,23 @@ function toggleEmailType() {
     const emailType = document.querySelector('input[name="emailType"]:checked').value;
     const qrOptionsGroup = document.getElementById('qrOptionsGroup');
     const registrationUrlGroup = document.getElementById('registrationUrlGroup');
+    const promotionContentGroup = document.getElementById('promotionContentGroup');
     const emailSubject = document.getElementById('emailSubject');
     
     if (emailType === 'promotion') {
         qrOptionsGroup.style.display = 'none';
         registrationUrlGroup.style.display = 'block';
+        promotionContentGroup.style.display = 'block';
         emailSubject.placeholder = '[{{eventName}}] 活動報名開放中';
         
         // 自動載入推廣信範本
         loadPromotionTemplate();
         
-        showAlert('📢 已切換到推廣信模式 - 不產生QR Code，需要設定報名網址', 'info');
+        showAlert('📢 已切換到推廣信模式 - 需要設定報名網址和宣傳內容', 'info');
     } else {
         qrOptionsGroup.style.display = 'flex';
         registrationUrlGroup.style.display = 'none';
+        promotionContentGroup.style.display = 'none';
         emailSubject.placeholder = '[{{eventName}}] 你的專屬入場QR碼';
         
         // 載入邀請信範本
@@ -358,6 +361,7 @@ async function sendBatchEmails() {
     const subject = document.getElementById('emailSubject').value;
     const from = document.getElementById('fromEmail').value;
     const registrationUrl = document.getElementById('registrationUrl').value;
+    const promotionContent = document.getElementById('promotionContent').value;
     const testMode = document.getElementById('testMode').checked;
     const attachPng = document.getElementById('attachPng').checked;
     const customTemplate = document.getElementById('emailTemplate').value;
@@ -384,6 +388,7 @@ async function sendBatchEmails() {
     formData.append('subject', subject);
     formData.append('from', from || '');
     formData.append('registrationUrl', registrationUrl || '');
+    formData.append('promotionContent', promotionContent || '');
     formData.append('testMode', testMode);
     formData.append('attachPng', emailType === 'invitation' ? attachPng : false);
     
@@ -900,7 +905,12 @@ function loadPromotionTemplate() {
                 <p>親愛的 <strong>{{name}}</strong> 您好，</p>
             </div>
             
-            <p>我們很高興邀請您參加 <strong>{{eventName}}</strong>！這是一個不容錯過的精彩活動。</p>
+            <p>我們很高興邀請您參加 <strong>{{eventName}}</strong>！</p>
+            
+            <div style="background: #f1f8e9; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #4caf50;">
+                <h3 style="margin: 0 0 15px 0; color: #2e7d32;">🌟 活動亮點</h3>
+                <div style="white-space: pre-line; line-height: 1.6;">{{promotionContent}}</div>
+            </div>
             
             <div class="event-info">
                 <h3>📅 活動詳情</h3>
@@ -985,6 +995,7 @@ async function previewTemplate() {
     const meetLocation = document.getElementById('meetLocation').value || '請提前15分鐘抵達會場';
     const secondRun = document.getElementById('secondRun').value || '';
     const registrationUrl = document.getElementById('registrationUrl').value || 'https://example.com/registration';
+    const promotionContent = document.getElementById('promotionContent').value || '這是一個精彩的活動，歡迎大家參與！';
     
     if (!template.trim()) {
         showAlert('請先輸入或載入郵件範本', 'error');
@@ -1049,6 +1060,7 @@ async function previewTemplate() {
         .replace(/\{\{meetLocation\}\}/g, meetLocation)
         .replace(/\{\{secondRunSection\}\}/g, secondRunSection)
         .replace(/\{\{registrationUrl\}\}/g, registrationUrl)
+        .replace(/\{\{promotionContent\}\}/g, promotionContent)
         .replace(/\{\{name\}\}/g, participant.name || '')
         .replace(/\{\{email\}\}/g, participant.email || '')
         .replace(/\{\{company\}\}/g, participant.company || '')
@@ -1108,6 +1120,7 @@ async function previewAllParticipants() {
     const meetLocation = document.getElementById('meetLocation').value || '請提前15分鐘抵達會場';
     const secondRun = document.getElementById('secondRun').value || '';
     const registrationUrl = document.getElementById('registrationUrl').value || 'https://example.com/registration';
+    const promotionContent = document.getElementById('promotionContent').value || '這是一個精彩的活動，歡迎大家參與！';
     
     if (!template.trim()) {
         showAlert('請先輸入或載入郵件範本', 'error');
@@ -1263,6 +1276,7 @@ async function previewAllParticipants() {
             .replace(/\{\{meetLocation\}\}/g, meetLocation)
             .replace(/\{\{secondRunSection\}\}/g, secondRunSection)
             .replace(/\{\{registrationUrl\}\}/g, registrationUrl)
+            .replace(/\{\{promotionContent\}\}/g, promotionContent)
             .replace(/\{\{name\}\}/g, participant.name || '')
             .replace(/\{\{email\}\}/g, participant.email || '')
             .replace(/\{\{company\}\}/g, participant.company || '')

@@ -415,7 +415,7 @@ router.post('/send-batch-enhanced', multiFileUpload.any(), async (req: Request, 
       return res.status(400).json({ error: 'No participants loaded. Please upload CSV first.' });
     }
 
-    const { emailType, eventId, eventName, eventDate, eventLocation, meetLocation, secondRun, subject, from, registrationUrl, testMode, attachPng, customTemplate } = req.body;
+    const { emailType, eventId, eventName, eventDate, eventLocation, meetLocation, secondRun, subject, from, registrationUrl, promotionContent, testMode, attachPng, customTemplate } = req.body;
 
     if (!eventName || !subject) {
       return res.status(400).json({ error: 'Missing required fields: eventName, subject' });
@@ -434,7 +434,7 @@ router.post('/send-batch-enhanced', multiFileUpload.any(), async (req: Request, 
       contentType: file.mimetype
     }));
 
-    const options: EmailOptions & { eventId?: string; emailType?: string; registrationUrl?: string; customTemplate?: string; attachments?: any[]; } = {
+    const options: EmailOptions & { eventId?: string; emailType?: string; registrationUrl?: string; promotionContent?: string; customTemplate?: string; attachments?: any[]; } = {
       emailType: emailType || 'invitation',
       eventId: eventId || undefined,
       eventName,
@@ -443,6 +443,7 @@ router.post('/send-batch-enhanced', multiFileUpload.any(), async (req: Request, 
       meetLocation: meetLocation || '',
       secondRun: secondRun || '',
       registrationUrl: registrationUrl || '',
+      promotionContent: promotionContent || '',
       subject,
       from: from || 'Event System <noreply@example.com>',
       testMode: testMode === 'true',
@@ -475,7 +476,7 @@ router.post('/send-batch-enhanced', multiFileUpload.any(), async (req: Request, 
 
 // 增強版 Mailer 類別
 class EnhancedMailer extends Mailer {
-  async sendBatch(participants: ParticipantRecord[], options: EmailOptions & { emailType?: string; registrationUrl?: string; customTemplate?: string; attachments?: any[]; eventId?: string }): Promise<any[]> {
+  async sendBatch(participants: ParticipantRecord[], options: EmailOptions & { emailType?: string; registrationUrl?: string; promotionContent?: string; customTemplate?: string; attachments?: any[]; eventId?: string }): Promise<any[]> {
     const results: any[] = [];
     const emailType = options.emailType || 'invitation';
     const eventId = options.eventId || process.env.EVENT_ID || '';
@@ -589,6 +590,7 @@ class EnhancedMailer extends Mailer {
       '{{meetLocation}}': options.meetLocation || '請提前15分鐘抵達會場',
       '{{secondRunSection}}': secondRunSection,
       '{{registrationUrl}}': options.registrationUrl || '',
+      '{{promotionContent}}': options.promotionContent || '',
       '{{checkinUrl}}': qrData?.checkinUrl || '',
       '{{qrDataUri}}': qrData?.qrDataUri || '',
     };

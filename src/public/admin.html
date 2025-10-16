@@ -442,12 +442,54 @@
         </div>
 
         <div class="card">
+            <h2>📧 郵件類型選擇</h2>
+            <div class="form-group">
+                <label>選擇郵件模式:</label>
+                <div style="display: flex; gap: 20px; margin: 10px 0;">
+                    <div class="radio-option">
+                        <input type="radio" id="emailTypeInvitation" name="emailType" value="invitation" checked onchange="toggleEmailType()">
+                        <label for="emailTypeInvitation" style="margin-left: 5px;">
+                            <strong>🎫 邀請信</strong> - 行前通知，含專屬QR Code報到
+                        </label>
+                    </div>
+                    <div class="radio-option">
+                        <input type="radio" id="emailTypePromotion" name="emailType" value="promotion" onchange="toggleEmailType()">
+                        <label for="emailTypePromotion" style="margin-left: 5px;">
+                            <strong>🎉 推廣信</strong> - 活動宣傳，含報名連結按鈕
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group" id="registrationUrlGroup" style="display: none;">
+                <label for="registrationUrl">報名網址:</label>
+                <input type="url" id="registrationUrl" placeholder="https://example.com/registration">
+                <small>推廣信中的報名連結，範本變數：{{registrationUrl}}</small>
+            </div>
+            
+            <div class="form-group" id="promotionContentGroup" style="display: none;">
+                <label for="promotionContent">活動宣傳內容:</label>
+                <textarea id="promotionContent" rows="4" placeholder="輸入活動亮點、講師介紹、活動特色等宣傳內容..."></textarea>
+                <small>推廣信中的活動描述和宣傳文字，範本變數：{{promotionContent}}</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="emailSubject">信件主旨:</label>
+                <input type="text" id="emailSubject" placeholder="[{{eventName}}] 你的專屬入場QR碼">
+            </div>
+            <div class="form-group">
+                <label for="fromEmail">寄件者:</label>
+                <input type="text" id="fromEmail" placeholder="AI Orators <noreply@example.com>">
+            </div>
+        </div>
+
+        <div class="card">
             <h2>📝 郵件範本編輯</h2>
             <div class="form-group">
                 <label for="emailTemplate">郵件範本 (HTML):</label>
                 <textarea id="emailTemplate" rows="15" placeholder="輸入 HTML 郵件範本..."></textarea>
-                <small>可用變數: {{name}}, {{email}}, {{company}}, {{title}}, {{eventName}}, {{eventDate}}, {{eventLocation}}, {{meetLocation}}, {{secondRunSection}}, {{registrationUrl}}, {{checkinUrl}}, {{qrDataUri}}, {{participantDetails}}<br>
-                <strong>注意：</strong>推廣信包含 {{registrationUrl}}，但不包含 {{checkinUrl}} 和 {{qrDataUri}} 變數</small>
+                <small>可用變數: {{name}}, {{email}}, {{company}}, {{title}}, {{eventName}}, {{eventDate}}, {{eventLocation}}, {{meetLocation}}, {{secondRunSection}}, {{registrationUrl}}, {{promotionContent}}, {{checkinUrl}}, {{qrDataUri}}, {{participantDetails}}<br>
+                <strong>注意：</strong>推廣信包含 {{registrationUrl}} 和 {{promotionContent}}，但不包含 {{checkinUrl}} 和 {{qrDataUri}} 變數</small>
             </div>
             <div class="form-group">
                 <label for="templateFile">上傳範本檔案:</label>
@@ -482,39 +524,7 @@
         </div>
 
         <div class="card">
-            <h2>📧 批次寄送郵件</h2>
-            <div class="form-group">
-                <label>郵件類型選擇:</label>
-                <div style="display: flex; gap: 20px; margin: 10px 0;">
-                    <div class="radio-option">
-                        <input type="radio" id="emailTypeInvitation" name="emailType" value="invitation" checked onchange="toggleEmailType()">
-                        <label for="emailTypeInvitation" style="margin-left: 5px;">
-                            <strong>🎫 邀請信</strong> - 行前通知，含專屬QR Code報到
-                        </label>
-                    </div>
-                    <div class="radio-option">
-                        <input type="radio" id="emailTypePromotion" name="emailType" value="promotion" onchange="toggleEmailType()">
-                        <label for="emailTypePromotion" style="margin-left: 5px;">
-                            <strong>🎉 推廣信</strong> - 活動宣傳，含報名連結按鈕
-                        </label>
-                    </div>
-                </div>
-            </div>
-            <div class="form-group">
-                <label for="emailSubject">信件主旨:</label>
-                <input type="text" id="emailSubject" placeholder="[{{eventName}}] 你的專屬入場QR碼">
-            </div>
-            <div class="form-group">
-                <label for="fromEmail">寄件者:</label>
-                <input type="text" id="fromEmail" placeholder="AI Orators <noreply@example.com>">
-            </div>
-            
-            <div class="form-group" id="registrationUrlGroup" style="display: none;">
-                <label for="registrationUrl">報名網址:</label>
-                <input type="url" id="registrationUrl" placeholder="https://example.com/registration">
-                <small>推廣信中的報名連結，範本變數：{{registrationUrl}}</small>
-            </div>
-            
+            <h2>📤 批次寄送郵件</h2>
             <div class="checkbox-group">
                 <input type="checkbox" id="testMode">
                 <label for="testMode">測試模式 (只寄前3封)</label>
