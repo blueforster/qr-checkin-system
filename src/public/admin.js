@@ -316,10 +316,29 @@ function updatePreviewData() {
     }
 }
 
+// 切換郵件類型時的UI變化
+function toggleEmailType() {
+    const emailType = document.getElementById('emailType').value;
+    const qrOptionsGroup = document.getElementById('qrOptionsGroup');
+    const registrationUrlGroup = document.getElementById('registrationUrlGroup');
+    const emailSubject = document.getElementById('emailSubject');
+    
+    if (emailType === 'promotion') {
+        qrOptionsGroup.style.display = 'none';
+        registrationUrlGroup.style.display = 'block';
+        emailSubject.placeholder = '[{{eventName}}] 活動報名開放中';
+    } else {
+        qrOptionsGroup.style.display = 'flex';
+        registrationUrlGroup.style.display = 'none';
+        emailSubject.placeholder = '[{{eventName}}] 你的專屬入場QR碼';
+    }
+}
+
 async function sendBatchEmails() {
     const headers = getAuthHeaders();
     if (!headers) return;
 
+    const emailType = document.getElementById('emailType').value;
     const eventId = document.getElementById('eventId').value;
     const eventName = document.getElementById('eventName').value;
     const eventDate = document.getElementById('eventDate').value;
@@ -328,17 +347,25 @@ async function sendBatchEmails() {
     const secondRun = document.getElementById('secondRun').value;
     const subject = document.getElementById('emailSubject').value;
     const from = document.getElementById('fromEmail').value;
+    const registrationUrl = document.getElementById('registrationUrl').value;
     const testMode = document.getElementById('testMode').checked;
     const attachPng = document.getElementById('attachPng').checked;
     const customTemplate = document.getElementById('emailTemplate').value;
 
-    if (!eventId || !eventName || !subject) {
-        showAlert('請填寫活動ID、活動名稱和信件主旨', 'error');
+    if (!eventName || !subject) {
+        showAlert('請填寫活動名稱和信件主旨', 'error');
+        return;
+    }
+
+    // 推廣信不需要eventId
+    if (emailType === 'invitation' && !eventId) {
+        showAlert('邀請信需要填寫活動ID', 'error');
         return;
     }
 
     const formData = new FormData();
-    formData.append('eventId', eventId);
+    formData.append('emailType', emailType);
+    formData.append('eventId', eventId || '');
     formData.append('eventName', eventName);
     formData.append('eventDate', eventDate || '');
     formData.append('eventLocation', eventLocation || '');
@@ -346,8 +373,9 @@ async function sendBatchEmails() {
     formData.append('secondRun', secondRun || '');
     formData.append('subject', subject);
     formData.append('from', from || '');
+    formData.append('registrationUrl', registrationUrl || '');
     formData.append('testMode', testMode);
-    formData.append('attachPng', attachPng);
+    formData.append('attachPng', emailType === 'invitation' ? attachPng : false);
     
     if (customTemplate && customTemplate.trim()) {
         formData.append('customTemplate', customTemplate);
@@ -474,34 +502,102 @@ async function exportCheckins() {
     if (!headers) return;
 
     try {
-        const response = await fetch('/admin/export-checkins', {
+        // 顯示載入提示
+        showAlert('正在準備報到記錄匯出...', 'info');
+        
+        // 取得當前的eventId，如果沒有則使用空字串讓後端使用預設值
+        const eventId = document.getElementById('eventId').value || '';
+        const url = eventId ? `/admin/export-checkins?eventId=${encodeURIComponent(eventId)}` : '/admin/export-checkins';
+        
+        console.log('Exporting checkins with URL:', url); // 調試用
+        
+        const response = await fetch(url, {
             headers
         });
 
+        console.log('Export response status:', response.status); // 調試用
+
         if (response.ok) {
             const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
+            console.log('Blob size:', blob.size); // 調試用
+            
+            if (blob.size === 0) {
+                showAlert('沒有報到記錄可以匯出', 'info');
+                return;
+            }
+            
+            const downloadUrl = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = url;
+            a.href = downloadUrl;
             
             const contentDisposition = response.headers.get('Content-Disposition');
             const filename = contentDisposition 
                 ? contentDisposition.split('filename=')[1].replace(/"/g, '')
-                : `checkins-${new Date().toISOString().split('T')[0]}.csv`;
+                : `checkins-${eventId || 'all'}-${new Date().toISOString().split('T')[0]}.csv`;
             
             a.download = filename;
             document.body.appendChild(a);
             a.click();
-            window.URL.revokeObjectURL(url);
+            window.URL.revokeObjectURL(downloadUrl);
             document.body.removeChild(a);
             
-            showAlert('報到記錄匯出成功', 'success');
+            showAlert(`報到記錄匯出成功: ${filename}`, 'success');
         } else {
-            const error = await response.json();
-            showAlert(`匯出失敗: ${error.error}`, 'error');
+            const contentType = response.headers.get('Content-Type');
+            if (contentType && contentType.includes('application/json')) {
+                const error = await response.json();
+                showAlert(`匯出失敗: ${error.error || '未知錯誤'}`, 'error');
+            } else {
+                showAlert(`匯出失敗: HTTP ${response.status}`, 'error');
+            }
         }
     } catch (error) {
+        console.error('Export error:', error); // 調試用
         showAlert(`匯出錯誤: ${error.message}`, 'error');
+    }
+}
+
+// 建立測試報到記錄
+async function createTestCheckin() {
+    const headers = getAuthHeaders();
+    if (!headers) return;
+
+    const eventId = document.getElementById('eventId').value || 'test-event';
+    const statusDiv = document.getElementById('checkinStatus');
+    
+    try {
+        statusDiv.style.display = 'block';
+        statusDiv.className = 'alert alert-info';
+        statusDiv.textContent = '正在建立測試報到記錄...';
+        
+        const testData = {
+            eventId: eventId,
+            email: 'test@example.com',
+            name: '測試參與者',
+            company: '測試公司',
+            title: '測試職稱'
+        };
+        
+        const response = await fetch('/admin/create-test-checkin', {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(testData)
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+            statusDiv.className = 'alert alert-success';
+            statusDiv.textContent = `✅ 測試報到記錄建立成功！現在可以嘗試匯出功能。`;
+            loadStats(); // 更新統計
+        } else {
+            statusDiv.className = 'alert alert-error';
+            statusDiv.textContent = `❌ 建立失敗: ${result.error}`;
+        }
+    } catch (error) {
+        statusDiv.style.display = 'block';
+        statusDiv.className = 'alert alert-error';
+        statusDiv.textContent = `❌ 建立錯誤: ${error.message}`;
     }
 }
 
@@ -510,14 +606,23 @@ let attachmentFiles = [];
 
 async function loadDefaultTemplate() {
     try {
-        const response = await fetch('/admin/get-default-template', {
-            headers: { 'Authorization': `Bearer ${adminPass}` }
+        const emailType = document.getElementById('emailType').value;
+        const headers = getAuthHeaders();
+        
+        if (!headers) {
+            loadOfflineTemplate();
+            return;
+        }
+        
+        const response = await fetch(`/admin/get-default-template?emailType=${emailType}`, {
+            headers: headers
         });
         
         if (response.ok) {
             const template = await response.text();
             document.getElementById('emailTemplate').value = template;
-            showAlert('預設範本已載入', 'success');
+            const templateType = emailType === 'promotion' ? '推廣信' : '邀請信';
+            showAlert(`${templateType}範本已載入`, 'success');
         } else {
             showAlert('載入預設範本失敗', 'error');
         }
@@ -529,6 +634,13 @@ async function loadDefaultTemplate() {
 }
 
 function loadOfflineTemplate() {
+    const emailType = document.getElementById('emailType').value;
+    
+    if (emailType === 'promotion') {
+        loadPromotionTemplate();
+        return;
+    }
+    
     const defaultTemplate = `<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -658,7 +770,157 @@ function loadOfflineTemplate() {
 </html>`;
 
     document.getElementById('emailTemplate').value = defaultTemplate;
-    showAlert('預設範本已載入 (離線版本)', 'success');
+    showAlert('邀請信範本已載入 (離線版本)', 'success');
+}
+
+function loadPromotionTemplate() {
+    const promotionTemplate = `<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{eventName}} - 活動報名開放</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0 0 10px 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        
+        .content {
+            padding: 40px 30px;
+        }
+        
+        .greeting {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        
+        .registration-section {
+            text-align: center;
+            margin: 30px 0;
+            padding: 30px;
+            background: #e3f2fd;
+            border-radius: 10px;
+            border: 2px solid #2196f3;
+        }
+        
+        .register-btn {
+            display: inline-block;
+            background: #2196f3;
+            color: white;
+            text-decoration: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 18px;
+            font-weight: 600;
+            margin: 20px 0;
+            box-shadow: 0 4px 15px rgba(33, 150, 243, 0.3);
+            transition: all 0.3s;
+        }
+        
+        .register-btn:hover {
+            background: #1976d2;
+            transform: translateY(-2px);
+        }
+        
+        .event-info {
+            background: #fff3e0;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #ff9800;
+        }
+        
+        .event-info h3 {
+            margin: 0 0 15px 0;
+            color: #e65100;
+        }
+        
+        .footer {
+            background: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #dee2e6;
+        }
+        
+        .highlight {
+            background: #ffeb3b;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 {{eventName}}</h1>
+            <p>報名開放中！立即加入我們</p>
+        </div>
+        
+        <div class="content">
+            <div class="greeting">
+                <p>親愛的 <strong>{{name}}</strong> 您好，</p>
+            </div>
+            
+            <p>我們很高興邀請您參加 <strong>{{eventName}}</strong>！這是一個不容錯過的精彩活動。</p>
+            
+            <div class="event-info">
+                <h3>📅 活動詳情</h3>
+                <p><strong>活動名稱：</strong>{{eventName}}</p>
+                <p><strong>日期時間：</strong>{{eventDate}}</p>
+                <p><strong>活動地點：</strong>{{eventLocation}}</p>
+                <p><strong>集合地點：</strong>{{meetLocation}}</p>
+                {{secondRunSection}}
+            </div>
+            
+            <div class="registration-section">
+                <h3>🚀 立即報名參與</h3>
+                <p>名額有限，<span class="highlight">先報先得</span>！</p>
+                <a href="{{registrationUrl}}" class="register-btn">🎫 立即報名</a>
+                <p><small>點擊按鈕或複製連結：{{registrationUrl}}</small></p>
+            </div>
+            
+            <p>如有任何問題，歡迎隨時與我們聯繫。期待您的參與！</p>
+        </div>
+        
+        <div class="footer">
+            <p><strong>{{eventName}} 主辦單位</strong></p>
+            <p>讓我們一起創造美好的回憶</p>
+        </div>
+    </div>
+</body>
+</html>`;
+
+    document.getElementById('emailTemplate').value = promotionTemplate;
+    showAlert('推廣信範本已載入 (離線版本)', 'success');
 }
 
 function uploadTemplate() {
@@ -705,12 +967,14 @@ function clearTemplate() {
 
 async function previewTemplate() {
     const template = document.getElementById('emailTemplate').value;
+    const emailType = document.getElementById('emailType').value;
     const eventId = document.getElementById('eventId').value;
     const eventName = document.getElementById('eventName').value || '範例活動';
     const eventDate = document.getElementById('eventDate').value || '請參考活動通知或官網';
     const eventLocation = document.getElementById('eventLocation').value || '請參考活動通知或官網';
     const meetLocation = document.getElementById('meetLocation').value || '請提前15分鐘抵達會場';
     const secondRun = document.getElementById('secondRun').value || '';
+    const registrationUrl = document.getElementById('registrationUrl').value || 'https://example.com/registration';
     
     if (!template.trim()) {
         showAlert('請先輸入或載入郵件範本', 'error');
@@ -734,10 +998,10 @@ async function previewTemplate() {
         participantDetails += `<p><strong>職稱：</strong>${participant.title}</p>`;
     }
     
-    // 生成真實的QR code
+    // 生成真實的QR code (只有邀請信需要)
     let qrDataUri = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
     
-    if (eventId && participant.email) {
+    if (emailType === 'invitation' && eventId && participant.email) {
         try {
             const headers = getAuthHeaders();
             if (headers) {
@@ -774,6 +1038,7 @@ async function previewTemplate() {
         .replace(/\{\{eventLocation\}\}/g, eventLocation)
         .replace(/\{\{meetLocation\}\}/g, meetLocation)
         .replace(/\{\{secondRunSection\}\}/g, secondRunSection)
+        .replace(/\{\{registrationUrl\}\}/g, registrationUrl)
         .replace(/\{\{name\}\}/g, participant.name || '')
         .replace(/\{\{email\}\}/g, participant.email || '')
         .replace(/\{\{company\}\}/g, participant.company || '')
@@ -802,10 +1067,11 @@ async function previewTemplate() {
         </head>
         <body>
             <div class="preview-header">
-                <strong>📧 郵件預覽</strong> - 
+                <strong>📧 ${emailType === 'promotion' ? '推廣信' : '邀請信'}預覽</strong> - 
                 參與者：${participant.name || '範例參與者'} (${participant.email || 'example@email.com'})
                 <br>活動：${eventName}
                 <br>日期：${eventDate} | 地點：${eventLocation}
+                ${emailType === 'promotion' ? `<br>報名網址：${registrationUrl}` : ''}
             </div>
             ${preview}
         </body>
@@ -813,22 +1079,25 @@ async function previewTemplate() {
     `);
     previewWindow.document.close();
     
+    const emailTypeText = emailType === 'promotion' ? '推廣信' : '邀請信';
     if (selectedParticipant) {
-        showAlert(`預覽已載入：${selectedParticipant.name} 的郵件`, 'success');
+        showAlert(`${emailTypeText}預覽已載入：${selectedParticipant.name} 的郵件`, 'success');
     } else {
-        showAlert('預覽已載入（使用範例資料，請先上傳名單並選擇參與者以查看真實預覽）', 'info');
+        showAlert(`${emailTypeText}預覽已載入（使用範例資料，請先上傳名單並選擇參與者以查看真實預覽）`, 'info');
     }
 }
 
 // 批次預覽所有參與者的郵件
 async function previewAllParticipants() {
     const template = document.getElementById('emailTemplate').value;
+    const emailType = document.getElementById('emailType').value;
     const eventId = document.getElementById('eventId').value;
     const eventName = document.getElementById('eventName').value || '範例活動';
     const eventDate = document.getElementById('eventDate').value || '請參考活動通知或官網';
     const eventLocation = document.getElementById('eventLocation').value || '請參考活動通知或官網';
     const meetLocation = document.getElementById('meetLocation').value || '請提前15分鐘抵達會場';
     const secondRun = document.getElementById('secondRun').value || '';
+    const registrationUrl = document.getElementById('registrationUrl').value || 'https://example.com/registration';
     
     if (!template.trim()) {
         showAlert('請先輸入或載入郵件範本', 'error');
@@ -842,11 +1111,12 @@ async function previewAllParticipants() {
     
     const previewWindow = window.open('', '_blank', 'width=1000,height=700');
     
+    const emailTypeText = emailType === 'promotion' ? '推廣信' : '邀請信';
     let htmlContent = `
         <!DOCTYPE html>
         <html>
         <head>
-            <title>批次郵件預覽 - ${eventName}</title>
+            <title>批次${emailTypeText}預覽 - ${eventName}</title>
             <style>
                 body { 
                     font-family: Arial, sans-serif; 
@@ -904,10 +1174,12 @@ async function previewAllParticipants() {
         </head>
         <body>
             <div class="batch-header">
-                <h2>📋 批次郵件預覽</h2>
+                <h2>📋 批次${emailTypeText}預覽</h2>
+                <p><strong>類型：</strong>${emailTypeText}</p>
                 <p><strong>活動：</strong>${eventName}</p>
                 <p><strong>日期：</strong>${eventDate}</p>
                 <p><strong>地點：</strong>${eventLocation}</p>
+                ${emailType === 'promotion' ? `<p><strong>報名網址：</strong>${registrationUrl}</p>` : ''}
                 <p>共 ${participantsData.length} 位參與者</p>
             </div>
             
@@ -925,9 +1197,9 @@ async function previewAllParticipants() {
     // 顯示載入提示
     showAlert('正在生成批次預覽，請稍候...', 'info');
     
-    // 批次生成QR codes
+    // 批次生成QR codes (只有邀請信需要)
     const qrDataMap = new Map();
-    if (eventId) {
+    if (emailType === 'invitation' && eventId) {
         try {
             const headers = getAuthHeaders();
             if (headers) {
@@ -980,6 +1252,7 @@ async function previewAllParticipants() {
             .replace(/\{\{eventLocation\}\}/g, eventLocation)
             .replace(/\{\{meetLocation\}\}/g, meetLocation)
             .replace(/\{\{secondRunSection\}\}/g, secondRunSection)
+            .replace(/\{\{registrationUrl\}\}/g, registrationUrl)
             .replace(/\{\{name\}\}/g, participant.name || '')
             .replace(/\{\{email\}\}/g, participant.email || '')
             .replace(/\{\{company\}\}/g, participant.company || '')
@@ -1006,7 +1279,7 @@ async function previewAllParticipants() {
     previewWindow.document.write(htmlContent);
     previewWindow.document.close();
     
-    showAlert(`批次預覽已開啟，共包含 ${participantsData.length} 位參與者的郵件預覽`, 'success');
+    showAlert(`批次${emailTypeText}預覽已開啟，共包含 ${participantsData.length} 位參與者的郵件預覽`, 'success');
 }
 
 // 附件管理
@@ -1090,6 +1363,7 @@ window.addEventListener('load', () => {
     updateAttachmentList();
     
     loadStats();
+    loadQRStatus();
 });
 
 // 臨時新增參與者功能
@@ -1226,5 +1500,74 @@ async function refreshParticipantList() {
         }
     } catch (error) {
         console.warn('Failed to refresh participant list:', error);
+    }
+}
+
+// QR Code 管理功能
+let qrEnabled = true; // 預設啟用
+
+async function toggleQRStatus() {
+    const headers = getAuthHeaders();
+    if (!headers) return;
+
+    try {
+        const response = await fetch('/admin/toggle-qr-status', {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({ enabled: !qrEnabled })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+            qrEnabled = result.enabled;
+            updateQRStatusUI();
+            showAlert(`QR Code 報到已${qrEnabled ? '啟用' : '停用'}`, 'success');
+        } else {
+            showAlert(`操作失敗: ${result.error}`, 'error');
+        }
+    } catch (error) {
+        showAlert(`操作錯誤: ${error.message}`, 'error');
+    }
+}
+
+function updateQRStatusUI() {
+    const statusText = document.getElementById('qrStatusText');
+    const toggleBtn = document.getElementById('toggleQrBtn');
+    const statusMessage = document.getElementById('qrStatusMessage');
+
+    if (qrEnabled) {
+        statusText.textContent = 'QR Code 報到已啟用';
+        statusText.style.color = '#27ae60';
+        toggleBtn.textContent = '🚫 停用 QR Code 報到';
+        toggleBtn.className = 'btn btn-danger';
+        statusMessage.style.display = 'none';
+    } else {
+        statusText.textContent = 'QR Code 報到已停用';
+        statusText.style.color = '#e74c3c';
+        toggleBtn.textContent = '✅ 啟用 QR Code 報到';
+        toggleBtn.className = 'btn btn-success';
+        statusMessage.innerHTML = '<div class="alert alert-info">ℹ️ QR Code 報到功能已停用，參與者將無法透過QR code進行報到</div>';
+        statusMessage.style.display = 'block';
+    }
+}
+
+async function loadQRStatus() {
+    const headers = getAuthHeaders();
+    if (!headers) return;
+
+    try {
+        const response = await fetch('/admin/qr-status', {
+            headers: headers
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+            qrEnabled = result.enabled;
+            updateQRStatusUI();
+        }
+    } catch (error) {
+        console.warn('Failed to load QR status:', error);
     }
 }

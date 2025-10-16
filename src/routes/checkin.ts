@@ -170,8 +170,35 @@ function renderTemplate(template: string, variables: Record<string, string>): st
   return rendered;
 }
 
+// 全域QR狀態變數 (與admin.ts共享)
+let qrEnabled = true;
+
+// 新增一個函數來設定QR狀態
+export function setQREnabled(enabled: boolean) {
+  qrEnabled = enabled;
+}
+
+// 新增一個函數來獲取QR狀態
+export function getQREnabled(): boolean {
+  return qrEnabled;
+}
+
 router.get('/', async (req: Request, res: Response) => {
   try {
+    // 檢查QR功能是否啟用
+    if (!qrEnabled) {
+      logger.warn('QR code功能已停用');
+      const failTemplate = loadTemplate('checkin-fail.html');
+      const disabledTemplate = failTemplate.replace(
+        '<h2>驗證失敗或 QR 已過期</h2>',
+        '<h2>QR Code 報到功能已暫停</h2>'
+      ).replace(
+        '<div class="info">請洽服務台協助</div>',
+        '<div class="info">QR Code 報到功能目前暫停使用<br>請洽現場工作人員協助報到</div>'
+      );
+      return res.send(disabledTemplate);
+    }
+
     const token = req.query.token as string;
     
     if (!token) {

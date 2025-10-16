@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{eventName}} - 活動報名開放</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0 0 10px 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        
+        .content {
+            padding: 40px 30px;
+        }
+        
+        .greeting {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        
+        .registration-section {
+            text-align: center;
+            margin: 30px 0;
+            padding: 30px;
+            background: #e3f2fd;
+            border-radius: 10px;
+            border: 2px solid #2196f3;
+        }
+        
+        .register-btn {
+            display: inline-block;
+            background: #2196f3;
+            color: white;
+            text-decoration: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 18px;
+            font-weight: 600;
+            margin: 20px 0;
+            box-shadow: 0 4px 15px rgba(33, 150, 243, 0.3);
+            transition: all 0.3s;
+        }
+        
+        .register-btn:hover {
+            background: #1976d2;
+            transform: translateY(-2px);
+        }
+        
+        .event-info {
+            background: #fff3e0;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #ff9800;
+        }
+        
+        .event-info h3 {
+            margin: 0 0 15px 0;
+            color: #e65100;
+        }
+        
+        .footer {
+            background: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #dee2e6;
+        }
+        
+        .highlight {
+            background: #ffeb3b;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 {{eventName}}</h1>
+            <p>報名開放中！立即加入我們</p>
+        </div>
+        
+        <div class="content">
+            <div class="greeting">
+                <p>親愛的 <strong>{{name}}</strong> 您好，</p>
+            </div>
+            
+            <p>我們很高興邀請您參加 <strong>{{eventName}}</strong>！這是一個不容錯過的精彩活動。</p>
+            
+            <div class="event-info">
+                <h3>📅 活動詳情</h3>
+                <p><strong>活動名稱：</strong>{{eventName}}</p>
+                <p><strong>日期時間：</strong>{{eventDate}}</p>
+                <p><strong>活動地點：</strong>{{eventLocation}}</p>
+                <p><strong>集合地點：</strong>{{meetLocation}}</p>
+                {{secondRunSection}}
+            </div>
+            
+            <div class="registration-section">
+                <h3>🚀 立即報名參與</h3>
+                <p>名額有限，<span class="highlight">先報先得</span>！</p>
+                <a href="{{registrationUrl}}" class="register-btn">🎫 立即報名</a>
+                <p><small>點擊按鈕或複製連結：{{registrationUrl}}</small></p>
+            </div>
+            
+            <p>如有任何問題，歡迎隨時與我們聯繫。期待您的參與！</p>
+        </div>
+        
+        <div class="footer">
+            <p><strong>{{eventName}} 主辦單位</strong></p>
+            <p>讓我們一起創造美好的回憶</p>
+        </div>
+    </div>
+</body>
+</html>

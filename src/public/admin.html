@@ -422,7 +422,8 @@
             <div class="form-group">
                 <label for="emailTemplate">郵件範本 (HTML):</label>
                 <textarea id="emailTemplate" rows="15" placeholder="輸入 HTML 郵件範本..."></textarea>
-                <small>可用變數: {{name}}, {{email}}, {{company}}, {{title}}, {{eventName}}, {{eventDate}}, {{eventLocation}}, {{meetLocation}}, {{secondRunSection}}, {{checkinUrl}}, {{qrDataUri}}, {{participantDetails}}</small>
+                <small>可用變數: {{name}}, {{email}}, {{company}}, {{title}}, {{eventName}}, {{eventDate}}, {{eventLocation}}, {{meetLocation}}, {{secondRunSection}}, {{registrationUrl}}, {{checkinUrl}}, {{qrDataUri}}, {{participantDetails}}<br>
+                <strong>注意：</strong>推廣信包含 {{registrationUrl}}，但不包含 {{checkinUrl}} 和 {{qrDataUri}} 變數</small>
             </div>
             <div class="form-group">
                 <label for="templateFile">上傳範本檔案:</label>
@@ -457,7 +458,14 @@
         </div>
 
         <div class="card">
-            <h2>📧 批次寄送邀請信</h2>
+            <h2>📧 批次寄送郵件</h2>
+            <div class="form-group">
+                <label for="emailType">郵件類型:</label>
+                <select id="emailType" onchange="toggleEmailType()">
+                    <option value="invitation">邀請信 (含QR Code)</option>
+                    <option value="promotion">推廣信 (不含QR Code)</option>
+                </select>
+            </div>
             <div class="form-group">
                 <label for="emailSubject">信件主旨:</label>
                 <input type="text" id="emailSubject" placeholder="[{{eventName}}] 你的專屬入場QR碼">
@@ -467,12 +475,18 @@
                 <input type="text" id="fromEmail" placeholder="AI Orators <noreply@example.com>">
             </div>
             
+            <div class="form-group" id="registrationUrlGroup" style="display: none;">
+                <label for="registrationUrl">報名網址:</label>
+                <input type="url" id="registrationUrl" placeholder="https://example.com/registration">
+                <small>推廣信中的報名連結，範本變數：{{registrationUrl}}</small>
+            </div>
+            
             <div class="checkbox-group">
                 <input type="checkbox" id="testMode">
                 <label for="testMode">測試模式 (只寄前3封)</label>
             </div>
             
-            <div class="checkbox-group">
+            <div class="checkbox-group" id="qrOptionsGroup">
                 <input type="checkbox" id="attachPng">
                 <label for="attachPng">以附件方式寄送 QR Code (否則內嵌)</label>
             </div>
@@ -540,9 +554,24 @@
         </div>
 
         <div class="card">
-            <h2>📊 匯出報到記錄</h2>
-            <p>匯出已報到的參與者資料為 CSV 格式</p>
-            <button class="btn btn-secondary" onclick="exportCheckins()">📥 匯出報到記錄</button>
+            <h2>🚫 QR Code 管理</h2>
+            <p>停用或重新啟用QR code報到功能</p>
+            <div class="form-group">
+                <label for="qrStatus">目前狀態:</label>
+                <span id="qrStatusText" style="font-weight: bold; color: #27ae60;">QR Code 報到已啟用</span>
+            </div>
+            <button class="btn btn-danger" id="toggleQrBtn" onclick="toggleQRStatus()">🚫 停用 QR Code 報到</button>
+            <div id="qrStatusMessage" style="margin-top: 15px; display: none;"></div>
+        </div>
+
+        <div class="card">
+            <h2>📊 報到記錄管理</h2>
+            <p>管理和匯出已報到的參與者資料</p>
+            <div style="margin-bottom: 15px;">
+                <button class="btn btn-secondary" onclick="exportCheckins()">📥 匯出報到記錄</button>
+                <button class="btn" onclick="createTestCheckin()">🧪 建立測試報到記錄</button>
+            </div>
+            <div id="checkinStatus" style="margin-top: 10px; display: none;"></div>
         </div>
     </div>
 

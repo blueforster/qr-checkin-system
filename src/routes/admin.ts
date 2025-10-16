@@ -7,6 +7,7 @@ import { SheetsService } from '../services/sheets';
 import { LocalStorage } from '../services/storage';
 import { parseCSV, validateCSVHeaders, detectDuplicates } from '../utils/csv';
 import { ParticipantRecord, EmailOptions } from '../types';
+import { setQREnabled, getQREnabled } from './checkin';
 import pino from 'pino';
 
 const logger = pino({ name: 'admin' });
@@ -31,7 +32,7 @@ const sheetsService = new SheetsService();
 const localStorage = new LocalStorage();
 
 function requireAuth(req: Request, res: Response, next: any) {
-  const adminPass = process.env.ADMIN_PASS || 'change-me';
+  const adminPass = process.env.ADMIN_PASS || 'your-new-password';
   const authHeader = req.headers.authorization;
   
   if (!authHeader || authHeader !== `Bearer ${adminPass}`) {
@@ -288,14 +289,32 @@ router.get('/get-current-participants', async (req: Request, res: Response) => {
 
 router.get('/export-checkins', async (req: Request, res: Response) => {
   try {
-    const eventId = req.query.eventId as string || process.env.EVENT_ID;
+    const eventId = req.query.eventId as string || process.env.EVENT_ID || 'default';
+    logger.info(`Exporting checkins for eventId: ${eventId}`);
     
     let checkins;
     try {
       checkins = await sheetsService.getCheckins(eventId);
+      logger.info(`Found ${checkins.length} checkins from Sheets service`);
     } catch (error) {
       logger.warn('Failed to get checkins from Sheets, trying local storage:', error);
-      checkins = await localStorage.getCheckins(eventId);
+      try {
+        checkins = await localStorage.getCheckins(eventId);
+        logger.info(`Found ${checkins.length} checkins from local storage`);
+      } catch (localError) {
+        logger.error('Failed to get checkins from local storage:', localError);
+        checkins = [];
+      }
+    }
+
+    if (checkins.length === 0) {
+      logger.info('No checkins found for export');
+      // 即使沒有資料也返回包含標題的CSV
+      const csvContent = 'timestamp,eventId,email,name,company,title,status\n';
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="checkins-${eventId}-${new Date().toISOString().split('T')[0]}.csv"`);
+      res.send('\ufeff' + csvContent);
+      return;
     }
 
     const csvHeaders = 'timestamp,eventId,email,name,company,title,status\n';
@@ -304,6 +323,7 @@ router.get('/export-checkins', async (req: Request, res: Response) => {
     ).join('\n');
 
     const csvContent = csvHeaders + csvRows;
+    logger.info(`Exporting ${checkins.length} checkin records`);
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="checkins-${eventId}-${new Date().toISOString().split('T')[0]}.csv"`);
@@ -366,7 +386,20 @@ router.post('/verify-smtp', async (req: Request, res: Response) => {
 // 取得預設郵件範本
 router.get('/get-default-template', (req: Request, res: Response) => {
   try {
-    const templatePath = join(__dirname, '../../templates/email.html');
+    const emailType = req.query.emailType as string || 'invitation';
+    let templatePath: string;
+    
+    if (emailType === 'promotion') {
+      templatePath = join(__dirname, '../../templates/promotion.html');
+    } else {
+      templatePath = join(__dirname, '../../templates/invitation.html');
+    }
+    
+    // 如果指定範本不存在，回退到原本的 email.html
+    if (!existsSync(templatePath)) {
+      templatePath = join(__dirname, '../../templates/email.html');
+    }
+    
     const template = readFileSync(templatePath, 'utf-8');
     res.send(template);
   } catch (error) {
@@ -382,10 +415,15 @@ router.post('/send-batch-enhanced', multiFileUpload.any(), async (req: Request, 
       return res.status(400).json({ error: 'No participants loaded. Please upload CSV first.' });
     }
 
-    const { eventId, eventName, eventDate, eventLocation, meetLocation, secondRun, subject, from, testMode, attachPng, customTemplate } = req.body;
+    const { emailType, eventId, eventName, eventDate, eventLocation, meetLocation, secondRun, subject, from, registrationUrl, testMode, attachPng, customTemplate } = req.body;
 
-    if (!eventId || !eventName || !subject) {
-      return res.status(400).json({ error: 'Missing required fields: eventId, eventName, subject' });
+    if (!eventName || !subject) {
+      return res.status(400).json({ error: 'Missing required fields: eventName, subject' });
+    }
+
+    // 如果是邀請信，需要eventId
+    if (emailType === 'invitation' && !eventId) {
+      return res.status(400).json({ error: 'Event ID is required for invitation emails' });
     }
 
     // 處理附件檔案
@@ -396,13 +434,15 @@ router.post('/send-batch-enhanced', multiFileUpload.any(), async (req: Request, 
       contentType: file.mimetype
     }));
 
-    const options: EmailOptions & { eventId: string; customTemplate?: string; attachments?: any[]; } = {
-      eventId,
+    const options: EmailOptions & { eventId?: string; emailType?: string; registrationUrl?: string; customTemplate?: string; attachments?: any[]; } = {
+      emailType: emailType || 'invitation',
+      eventId: eventId || undefined,
       eventName,
       eventDate: eventDate || '',
       eventLocation: eventLocation || '',
       meetLocation: meetLocation || '',
       secondRun: secondRun || '',
+      registrationUrl: registrationUrl || '',
       subject,
       from: from || 'Event System <noreply@example.com>',
       testMode: testMode === 'true',
@@ -435,14 +475,16 @@ router.post('/send-batch-enhanced', multiFileUpload.any(), async (req: Request, 
 
 // 增強版 Mailer 類別
 class EnhancedMailer extends Mailer {
-  async sendBatch(participants: ParticipantRecord[], options: EmailOptions & { customTemplate?: string; attachments?: any[]; eventId?: string }): Promise<any[]> {
+  async sendBatch(participants: ParticipantRecord[], options: EmailOptions & { emailType?: string; registrationUrl?: string; customTemplate?: string; attachments?: any[]; eventId?: string }): Promise<any[]> {
     const results: any[] = [];
+    const emailType = options.emailType || 'invitation';
     const eventId = options.eventId || process.env.EVENT_ID || '';
     
-    logger.info(`[EnhancedMailer] Using eventId: "${eventId}", from options: "${options.eventId}", from env: "${process.env.EVENT_ID}"`);
+    logger.info(`[EnhancedMailer] Email type: "${emailType}", Using eventId: "${eventId}"`);
     
-    if (!eventId) {
-      throw new Error('Event ID is required for batch email sending');
+    // 只有邀請信需要eventId
+    if (emailType === 'invitation' && !eventId) {
+      throw new Error('Event ID is required for invitation emails');
     }
     
     const participantsToSend = options.testMode ? participants.slice(0, 3) : participants;
@@ -451,17 +493,20 @@ class EnhancedMailer extends Mailer {
       const participant = participantsToSend[i];
       
       try {
-        const qrData = await this.generateQRData(eventId, participant.email, participant.name);
+        let html;
+        let qrData = null;
         
-        // 調試：檢查 QR 資料
-        logger.info(`QR Data for ${participant.email}: hasQrDataUri=${!!qrData.qrDataUri}, length=${qrData.qrDataUri?.length || 0}, prefix=${qrData.qrDataUri?.substring(0, 30) || 'null'}`);
+        // 只有邀請信才生成QR code
+        if (emailType === 'invitation') {
+          qrData = await this.generateQRData(eventId, participant.email, participant.name);
+          logger.info(`QR Data for ${participant.email}: hasQrDataUri=${!!qrData.qrDataUri}, length=${qrData.qrDataUri?.length || 0}`);
+        }
         
         // 使用自定義範本或預設範本
-        let html;
         if (options.customTemplate) {
           html = this.renderCustomTemplate(participant, options, qrData, options.customTemplate);
         } else {
-          // 調用父類的 renderTemplate 方法
+          // 調用父類的 renderTemplate 方法，推廣信傳入null作為qrData
           html = super.renderTemplate(participant, options, qrData);
         }
         
@@ -470,23 +515,26 @@ class EnhancedMailer extends Mailer {
           to: participant.email,
           subject: options.subject.replace('{{eventName}}', options.eventName),
           html: html,
-          attachments: [
-            {
-              filename: 'qr-code.png',
-              content: qrData.qrBuffer,
-              contentType: 'image/png',
-              cid: 'qrcode' // 設定 Content-ID，讓 HTML 可以用 cid:qrcode 引用
-            }
-          ]
+          attachments: []
         };
 
-        // 如果啟用附件模式，額外添加一個可下載的附件
-        if (options.attachPng) {
+        // 只有邀請信才添加QR code附件
+        if (emailType === 'invitation' && qrData) {
           mailOptions.attachments.push({
-            filename: 'qr-code-download.png',
+            filename: 'qr-code.png',
             content: qrData.qrBuffer,
-            contentType: 'image/png'
+            contentType: 'image/png',
+            cid: 'qrcode' // 設定 Content-ID，讓 HTML 可以用 cid:qrcode 引用
           });
+
+          // 如果啟用附件模式，額外添加一個可下載的附件
+          if (options.attachPng) {
+            mailOptions.attachments.push({
+              filename: 'qr-code-download.png',
+              content: qrData.qrBuffer,
+              contentType: 'image/png'
+            });
+          }
         }
 
         // 添加自定義附件
@@ -540,8 +588,9 @@ class EnhancedMailer extends Mailer {
       '{{eventLocation}}': options.eventLocation || '請參考活動通知或官網',
       '{{meetLocation}}': options.meetLocation || '請提前15分鐘抵達會場',
       '{{secondRunSection}}': secondRunSection,
-      '{{checkinUrl}}': qrData.checkinUrl || '',
-      '{{qrDataUri}}': qrData.qrDataUri || '',
+      '{{registrationUrl}}': options.registrationUrl || '',
+      '{{checkinUrl}}': qrData?.checkinUrl || '',
+      '{{qrDataUri}}': qrData?.qrDataUri || '',
     };
 
     for (const [placeholder, value] of Object.entries(replacements)) {
@@ -629,6 +678,112 @@ router.post('/batch-preview-qr', async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('批次QR預覽錯誤:', error);
     res.status(500).json({ error: '批次QR code預覽失敗' });
+  }
+});
+
+// QR Code 管理功能
+router.get('/qr-status', async (req: Request, res: Response) => {
+  try {
+    res.json({
+      success: true,
+      enabled: getQREnabled()
+    });
+  } catch (error) {
+    logger.error('獲取QR狀態錯誤:', error);
+    res.status(500).json({ error: '獲取QR狀態失敗' });
+  }
+});
+
+router.post('/toggle-qr-status', async (req: Request, res: Response) => {
+  try {
+    const { enabled } = req.body;
+    
+    if (typeof enabled !== 'boolean') {
+      return res.status(400).json({ error: '參數錯誤: enabled 必須是布林值' });
+    }
+
+    setQREnabled(enabled);
+    logger.info(`QR Code 功能已${enabled ? '啟用' : '停用'}`);
+    
+    res.json({
+      success: true,
+      enabled: getQREnabled(),
+      message: `QR Code 功能已${enabled ? '啟用' : '停用'}`
+    });
+  } catch (error) {
+    logger.error('切換QR狀態錯誤:', error);
+    res.status(500).json({ error: '切換QR狀態失敗' });
+  }
+});
+
+// 提供給報到頁面檢查QR功能是否啟用
+router.get('/qr-enabled', async (req: Request, res: Response) => {
+  try {
+    res.json({
+      enabled: getQREnabled()
+    });
+  } catch (error) {
+    logger.error('檢查QR啟用狀態錯誤:', error);
+    res.status(500).json({ error: '檢查QR啟用狀態失敗' });
+  }
+});
+
+// 建立測試報到記錄
+router.post('/create-test-checkin', async (req: Request, res: Response) => {
+  try {
+    const { eventId, email, name, company, title } = req.body;
+    
+    if (!eventId || !email || !name) {
+      return res.status(400).json({ error: '缺少必要參數: eventId, email, name' });
+    }
+
+    const now = new Date();
+    const timestamp = now.toLocaleString('zh-TW', { 
+      timeZone: 'Asia/Taipei',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+
+    const checkinRecord = {
+      timestamp,
+      eventId,
+      email,
+      name,
+      company: company || '',
+      title: title || '',
+      nonce: 'test-' + Date.now(),
+      status: 'checked_in'
+    };
+
+    let result;
+    try {
+      result = await sheetsService.upsertCheckin(checkinRecord);
+      logger.info(`Test checkin created in Sheets for ${email}`);
+    } catch (error) {
+      logger.warn('Failed to create test checkin in Sheets, trying local storage:', error);
+      try {
+        result = await localStorage.saveCheckin(checkinRecord);
+        logger.info(`Test checkin created locally for ${email}`);
+      } catch (localError) {
+        logger.error('Failed to create test checkin locally:', localError);
+        return res.status(500).json({ error: '無法建立測試報到記錄' });
+      }
+    }
+
+    res.json({ 
+      success: true, 
+      message: '測試報到記錄建立成功',
+      record: checkinRecord,
+      isFirstTime: result.isFirstTime
+    });
+
+  } catch (error) {
+    logger.error('Create test checkin error:', error);
+    res.status(500).json({ error: '建立測試報到記錄失敗' });
   }
 });
 
