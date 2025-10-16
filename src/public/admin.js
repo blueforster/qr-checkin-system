@@ -318,7 +318,7 @@ function updatePreviewData() {
 
 // 切換郵件類型時的UI變化
 function toggleEmailType() {
-    const emailType = document.getElementById('emailType').value;
+    const emailType = document.querySelector('input[name="emailType"]:checked').value;
     const qrOptionsGroup = document.getElementById('qrOptionsGroup');
     const registrationUrlGroup = document.getElementById('registrationUrlGroup');
     const emailSubject = document.getElementById('emailSubject');
@@ -327,10 +327,20 @@ function toggleEmailType() {
         qrOptionsGroup.style.display = 'none';
         registrationUrlGroup.style.display = 'block';
         emailSubject.placeholder = '[{{eventName}}] 活動報名開放中';
+        
+        // 自動載入推廣信範本
+        loadPromotionTemplate();
+        
+        showAlert('📢 已切換到推廣信模式 - 不產生QR Code，需要設定報名網址', 'info');
     } else {
         qrOptionsGroup.style.display = 'flex';
         registrationUrlGroup.style.display = 'none';
         emailSubject.placeholder = '[{{eventName}}] 你的專屬入場QR碼';
+        
+        // 載入邀請信範本
+        loadDefaultTemplate();
+        
+        showAlert('🎫 已切換到邀請信模式 - 包含QR Code報到功能', 'info');
     }
 }
 
@@ -338,7 +348,7 @@ async function sendBatchEmails() {
     const headers = getAuthHeaders();
     if (!headers) return;
 
-    const emailType = document.getElementById('emailType').value;
+    const emailType = document.querySelector('input[name="emailType"]:checked').value;
     const eventId = document.getElementById('eventId').value;
     const eventName = document.getElementById('eventName').value;
     const eventDate = document.getElementById('eventDate').value;
@@ -606,7 +616,7 @@ let attachmentFiles = [];
 
 async function loadDefaultTemplate() {
     try {
-        const emailType = document.getElementById('emailType').value;
+        const emailType = document.querySelector('input[name="emailType"]:checked').value;
         const headers = getAuthHeaders();
         
         if (!headers) {
@@ -634,7 +644,7 @@ async function loadDefaultTemplate() {
 }
 
 function loadOfflineTemplate() {
-    const emailType = document.getElementById('emailType').value;
+    const emailType = document.querySelector('input[name="emailType"]:checked').value;
     
     if (emailType === 'promotion') {
         loadPromotionTemplate();
@@ -967,7 +977,7 @@ function clearTemplate() {
 
 async function previewTemplate() {
     const template = document.getElementById('emailTemplate').value;
-    const emailType = document.getElementById('emailType').value;
+    const emailType = document.querySelector('input[name="emailType"]:checked').value;
     const eventId = document.getElementById('eventId').value;
     const eventName = document.getElementById('eventName').value || '範例活動';
     const eventDate = document.getElementById('eventDate').value || '請參考活動通知或官網';
@@ -1090,7 +1100,7 @@ async function previewTemplate() {
 // 批次預覽所有參與者的郵件
 async function previewAllParticipants() {
     const template = document.getElementById('emailTemplate').value;
-    const emailType = document.getElementById('emailType').value;
+    const emailType = document.querySelector('input[name="emailType"]:checked').value;
     const eventId = document.getElementById('eventId').value;
     const eventName = document.getElementById('eventName').value || '範例活動';
     const eventDate = document.getElementById('eventDate').value || '請參考活動通知或官網';
