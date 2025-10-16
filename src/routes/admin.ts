@@ -6,7 +6,7 @@ import { Mailer } from '../services/mailer';
 import { SheetsService } from '../services/sheets';
 import { LocalStorage } from '../services/storage';
 import { parseCSV, validateCSVHeaders, detectDuplicates } from '../utils/csv';
-import { ParticipantRecord, EmailOptions } from '../types';
+import { ParticipantRecord, EmailOptions, CheckinRecord } from '../types';
 import { setQREnabled, getQREnabled } from './checkin';
 import pino from 'pino';
 
@@ -292,7 +292,7 @@ router.get('/export-checkins', async (req: Request, res: Response) => {
     const eventId = req.query.eventId as string || process.env.EVENT_ID || 'default';
     logger.info(`Exporting checkins for eventId: ${eventId}`);
     
-    let checkins;
+    let checkins: CheckinRecord[] = [];
     try {
       checkins = await sheetsService.getCheckins(eventId);
       logger.info(`Found ${checkins.length} checkins from Sheets service`);
@@ -748,7 +748,7 @@ router.post('/create-test-checkin', async (req: Request, res: Response) => {
       second: '2-digit'
     });
 
-    const checkinRecord = {
+    const checkinRecord: CheckinRecord = {
       timestamp,
       eventId,
       email,
@@ -756,7 +756,7 @@ router.post('/create-test-checkin', async (req: Request, res: Response) => {
       company: company || '',
       title: title || '',
       nonce: 'test-' + Date.now(),
-      status: 'checked_in'
+      status: 'checked_in' as const
     };
 
     let result;
