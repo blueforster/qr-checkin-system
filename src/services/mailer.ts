@@ -69,7 +69,7 @@ export class Mailer {
     const secondRunSection = options.secondRun ? 
       `<div style="margin-top: 15px;">
           <p><strong>其他資訊：</strong></p>
-          <div style="white-space: pre-line; background: #f8f9fa; padding: 10px; border-radius: 5px; margin: 5px 0;">${options.secondRun}</div>
+          <div style="white-space: pre-line; background: #faf6f0; padding: 10px; border-radius: 5px; margin: 5px 0;">${options.secondRun}</div>
       </div>` : '';
 
     const replacements = {
